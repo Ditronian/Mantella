@@ -68,18 +68,37 @@ class ChatManager:
             return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
 
         with self.__tts_access_lock:
-            try:
-                if self.__config.narration_handling == NarrationHandlingEnum.USE_NARRATOR and content.sentence_type == SentenceTypeEnum.NARRATION:
-                    synth_options = SynthesizationOptions(False, self.__is_first_sentence)
-                    audio_file = self.__tts.synthesize(self.__config.narrator_voice, text, self.__config.narrator_voice, self.__config.narrator_voice, "en", synth_options, self.__config.narrator_voice)
-                else:
-                    synth_options = SynthesizationOptions(character_to_talk.is_in_combat, self.__is_first_sentence)
-                    audio_file = self.__tts.synthesize(character_to_talk.tts_voice_model, text, character_to_talk.in_game_voice_model, character_to_talk.csv_in_game_voice_model, character_to_talk.voice_accent, synth_options, character_to_talk.advanced_voice_model)
-            except Exception as e:
-                utils.play_error_sound()
-                error_text = f"Text-to-Speech Error: {e}"
-                logging.log(29, error_text)
-                return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0, error_text)
+            # Retry TTS synthesis up to 3 times with exponential backoff
+            max_retries = 3
+            retry_delay = 1.0  # Start with 1 second delay
+            audio_file = ""
+
+            for attempt in range(max_retries):
+                try:
+                    if self.__config.narration_handling == NarrationHandlingEnum.USE_NARRATOR and content.sentence_type == SentenceTypeEnum.NARRATION:
+                        synth_options = SynthesizationOptions(False, self.__is_first_sentence)
+                        audio_file = self.__tts.synthesize(self.__config.narrator_voice, text, self.__config.narrator_voice, self.__config.narrator_voice, "en", synth_options, self.__config.narrator_voice)
+                    else:
+                        synth_options = SynthesizationOptions(character_to_talk.is_in_combat, self.__is_first_sentence)
+                        audio_file = self.__tts.synthesize(character_to_talk.tts_voice_model, text, character_to_talk.in_game_voice_model, character_to_talk.csv_in_game_voice_model, character_to_talk.voice_accent, synth_options, character_to_talk.advanced_voice_model)
+                    # Success! Break out of retry loop
+                    break
+                except Exception as e:
+                    utils.play_error_sound()
+                    error_text = f"Text-to-Speech Error (attempt {attempt + 1}/{max_retries}): {e}"
+                    logging.log(29, error_text)
+
+                    if attempt < max_retries - 1:
+                        # Not the last attempt, wait and retry
+                        logging.log(29, f"Retrying TTS synthesis in {retry_delay} seconds...")
+                        import time
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                    else:
+                        # All retries exhausted, return text-only sentence (no error_message to avoid conversation termination)
+                        logging.error(f"TTS synthesis failed after {max_retries} attempts. Continuing with text-only.")
+                        return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
+
             self.__is_first_sentence = False
             return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, content.is_system_generated_sentence, content.actions), audio_file, self.get_audio_duration(audio_file))
 

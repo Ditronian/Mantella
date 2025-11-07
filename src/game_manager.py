@@ -102,12 +102,17 @@ class GameStateManager:
 
         if sentence_to_play:
             if not sentence_to_play.error_message:
-                self.__game.prepare_sentence_for_game(sentence_to_play, self.__talk.context, self.__config, topicInfoID, self.__first_line)            
+                self.__game.prepare_sentence_for_game(sentence_to_play, self.__talk.context, self.__config, topicInfoID, self.__first_line)
                 reply[comm_consts.KEY_REPLYTYPE_NPCTALK] = self.sentence_to_json(sentence_to_play, topicInfoID)
                 self.__first_line = False
             else:
-                self.__talk.end()
-                return self.error_message(sentence_to_play.error_message)
+                # Log error but continue conversation (text-only fallback)
+                logging.error(f"Error in sentence generation: {sentence_to_play.error_message}")
+                logging.error("Continuing conversation with text-only fallback.")
+                # Still send the sentence to the game for text display
+                self.__game.prepare_sentence_for_game(sentence_to_play, self.__talk.context, self.__config, topicInfoID, self.__first_line)
+                reply[comm_consts.KEY_REPLYTYPE_NPCTALK] = self.sentence_to_json(sentence_to_play, topicInfoID)
+                self.__first_line = False
         return reply
 
     @utils.time_it

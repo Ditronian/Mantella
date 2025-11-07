@@ -37,6 +37,10 @@ class ttsable(ABC):
         #self.debug_mode = config.debug_mode
         #self.play_audio_from_script = config.play_audio_from_script
 
+        # Rotating file pool to avoid file locking issues
+        self._temp_file_pool_size = 3
+        self._temp_file_index = 0
+
         if config.game == "Fallout4" or config.game == "Fallout4VR":
             self._game = "Fallout4"
         else: 
@@ -52,8 +56,13 @@ class ttsable(ABC):
 
         logging.log(22, f'Synthesizing voiceline: {voiceline.strip()}')
 
-        final_voiceline_file_name = 'out' # "out" is the file name used by XTTS
+        # Use rotating file pool to avoid file locking issues
+        # Cycle through out_0.wav, out_1.wav, out_2.wav
+        final_voiceline_file_name = f'out_{self._temp_file_index}'
         final_voiceline_file =  f"{self._voiceline_folder}/{final_voiceline_file_name}.wav"
+
+        # Advance to next file in pool for next call
+        self._temp_file_index = (self._temp_file_index + 1) % self._temp_file_pool_size
 
         try:
             if os.path.exists(final_voiceline_file):
