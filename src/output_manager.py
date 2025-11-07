@@ -166,7 +166,10 @@ class ChatManager:
         try:
             current_sentence: str = ''
             settings: sentence_generation_settings = sentence_generation_settings(active_character)
-            while True:
+            max_llm_retries = 3
+            llm_retry_count = 0
+
+            while llm_retry_count < max_llm_retries:
                 try:
                     start_time = time.time()
                     async for content in self.__client.streaming_call(messages=messages, is_multi_npc=characters.contains_multiple_npcs()):
@@ -178,7 +181,7 @@ class ChatManager:
                         if first_token:
                             logging.log(self.loglevel, f"LLM took {round(time.time() - start_time, 5)} seconds to respond")
                             first_token = False
-                        
+
                         current_sentence += content
                         raw_response += content
                         parsed_sentence: sentence_content | None = None
@@ -192,7 +195,7 @@ class ChatManager:
                                 break
                         if settings.stop_generation:
                             break
-                        
+
                         # Process sentences from the parser chain
                         if parsed_sentence:
                             if not self.__config.narration_handling == NarrationHandlingEnum.CUT_NARRATIONS or parsed_sentence.sentence_type != SentenceTypeEnum.NARRATION:
@@ -200,14 +203,21 @@ class ChatManager:
                                 blocking_queue.put(new_sentence)
                                 parsed_sentence = None
                     break #if the streaming_call() completed without exception, break the while loop
-                            
+
                 except Exception as e:
+                    llm_retry_count += 1
                     utils.play_error_sound()
-                    logging.error(f"LLM API Error: {e}")                    
+                    logging.error(f"LLM API Error (attempt {llm_retry_count}/{max_llm_retries}): {e}")
+
+                    if llm_retry_count >= max_llm_retries:
+                        logging.error(f"LLM failed after {max_llm_retries} attempts. Ending response generation.")
+                        break
+
                     error_response = "I can't find the right words at the moment."
                     new_sentence = self.generate_sentence(sentence_content(active_character, error_response, SentenceTypeEnum.SPEECH, True))
                     blocking_queue.put(new_sentence)
                     if new_sentence.error_message:
+                        logging.error("Error response TTS also failed. Stopping retries.")
                         break
                     # else:
                     #     for a in actions_in_sentence:

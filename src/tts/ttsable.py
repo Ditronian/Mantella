@@ -90,7 +90,15 @@ class ttsable(ABC):
             #Use a sanitized version of the voice text as filename
             unique_name: str  = f'{voice} {voiceline.strip()}'[:150]
             new_name: str = "".join(c for c in unique_name if c not in r'\/:*?"<>|.')
-            new_wav_file_name = f'{self._voiceline_folder}/save/{new_name.strip()}.wav'
+            new_name = new_name.strip()
+
+            # Fallback to timestamp if sanitized name is empty or invalid
+            if not new_name or new_name.upper() in ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'LPT1', 'LPT2', 'LPT3', 'LPT4']:
+                timestamp: str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
+                new_name = f"{voice}_{timestamp}"
+                logging.warning(f"Invalid filename from voiceline text, using timestamp: {new_name}")
+
+            new_wav_file_name = f'{self._voiceline_folder}/save/{new_name}.wav'
 
             new_lip_file_name = new_wav_file_name.replace(".wav", ".lip")
             new_fuz_file_name = new_wav_file_name.replace(".wav", ".fuz")
