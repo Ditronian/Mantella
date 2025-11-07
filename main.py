@@ -1,3 +1,4 @@
+import onnxruntime as ort  # Import FIRST to avoid DLL conflicts with PyTorch
 from src.http.http_server import http_server
 import traceback
 from src.http.routes.routeable import routeable

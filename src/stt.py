@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import onnxruntime as ort  # Import onnxruntime BEFORE faster_whisper to avoid DLL conflicts
 from faster_whisper import WhisperModel
 import logging
 from src.config.config_loader import ConfigLoader
@@ -17,7 +18,6 @@ import time
 import os
 import wave
 from moonshine_onnx import MoonshineOnnxModel, load_tokenizer
-import onnxruntime as ort
 from scipy.io import wavfile
 from sounddevice import InputStream
 from silero_vad import VADIterator, load_silero_vad
