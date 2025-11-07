@@ -211,10 +211,23 @@ class conversation:
             new_message: user_message = user_message(self.__context.config, player_text, player_character.name, False)
             new_message.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
             new_message = self.update_game_events(new_message)
-            self.__messages.add_message(new_message)
-            player_voiceline = self.__get_player_voiceline(player_character, player_text)
             text = new_message.text
             logging.log(23, f"Text passed to NPC: {text}")
+
+            # Check for special keywords BEFORE generating player voiceline or adding to messages
+            # This prevents TTS generation for command keywords
+            is_resume = self.__should_resume_conversation(text)
+            redo_guidance = self.__should_redo_response(text)
+
+            # Only generate player voiceline if this isn't a special command
+            # Note: redo_guidance can be None (not a redo), "" (redo without guidance), or a string (redo with guidance)
+            if not is_resume and redo_guidance is None:
+                player_voiceline = self.__get_player_voiceline(player_character, player_text)
+            else:
+                player_voiceline = None  # No voiceline for command keywords
+
+            # Now add message to thread
+            self.__messages.add_message(new_message)
 
         # Check if player wants to resume from previous conversation history
         if self.__should_resume_conversation(text):
@@ -225,6 +238,22 @@ class conversation:
             # For now, just mark it as system-generated so it doesn't get saved
             new_message.is_system_generated_message = True
             # Don't start generation - just return so game can continue
+            return player_text, events_need_updating, player_voiceline
+
+        # Check if player wants to redo the last NPC response
+        # redo_guidance is None if not a redo, "" if redo without guidance, or a string if redo with guidance
+        if redo_guidance is not None:
+            if redo_guidance:
+                logging.info(f"Redo command detected with guidance: {redo_guidance}")
+            else:
+                logging.info("Redo command detected (no specific guidance)")
+            # Mark the original "Redo: ..." message as system-generated so it doesn't get saved
+            new_message.is_system_generated_message = True
+            # Execute the redo
+            if self.__redo_last_response(redo_guidance, player_character.name if player_character else ""):
+                # Start new generation with the redo directive
+                self.__start_generating_npc_sentences()
+            # Return so game can continue
             return player_text, events_need_updating, player_voiceline
 
         ejected_npc = self.__does_dismiss_npc_from_conversation(text)
@@ -473,6 +502,81 @@ class conversation:
 
         # Must be an exact match - no extra words allowed
         return transcript_cleaned == resume_keyword
+
+    def __should_redo_response(self, last_user_text: str) -> str | None:
+        """Checks if the player input is a redo command and extracts the guidance
+
+        Args:
+            last_user_text (str): the text to check
+
+        Returns:
+            str | None: the guidance text (can be empty string if no guidance provided), or None if not a redo command
+        """
+        import re
+
+        # Get the configured keyword
+        redo_keyword = self.__context.config.redo_conversation_keyword.strip().lower()
+
+        # Pattern 1: "redo: guidance text here" (with guidance)
+        pattern_with_guidance = rf"^{re.escape(redo_keyword)}:\s*(.+)$"
+        match = re.match(pattern_with_guidance, last_user_text.strip(), re.IGNORECASE)
+        if match:
+            guidance = match.group(1).strip()
+            return guidance
+
+        # Pattern 2: just "redo" with optional colon but no guidance (redo without guidance)
+        pattern_no_guidance = rf"^{re.escape(redo_keyword)}:?\s*$"
+        match = re.match(pattern_no_guidance, last_user_text.strip(), re.IGNORECASE)
+        if match:
+            return ""  # Empty string means redo without guidance
+
+        return None  # Not a redo command at all
+
+    def __redo_last_response(self, guidance: str, player_name: str) -> bool:
+        """Removes the last NPC response batch and adds redo directive
+
+        Args:
+            guidance (str): the guidance for regenerating the response
+            player_name (str): the player's name for the directive message
+
+        Returns:
+            bool: True if successful, False if no assistant message found
+        """
+        # Find and remove the last assistant_message
+        removed = False
+        removed_content = ""
+        for i in range(len(self.__messages._message_thread__messages) - 1, -1, -1):
+            if isinstance(self.__messages._message_thread__messages[i], assistant_message):
+                removed_msg = self.__messages._message_thread__messages.pop(i)
+                removed_content = removed_msg.get_formatted_content()
+                logging.info(f"Removed last NPC response for redo (first 100 chars): {removed_content[:100]}...")
+                removed = True
+                break
+
+        if not removed:
+            logging.warning("Redo requested but no assistant message found to remove")
+            return False
+
+        # Add redo directive as user_message with clear marking
+        # Include the removed response for context so LLM knows what it said before
+        if guidance:
+            # Redo with specific guidance
+            directive_text = f"<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response with this guidance: {guidance}>>>"
+        else:
+            # Redo without guidance - just try again differently
+            directive_text = f"<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response differently.>>>"
+
+        redo_directive = user_message(
+            self.__context.config,
+            directive_text,
+            player_name,
+            is_system_generated_message=False  # Keep it in history for context
+        )
+        redo_directive.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+        self.__messages.add_message(redo_directive)
+
+        logging.info(f"Added redo directive{' with guidance: ' + guidance if guidance else ' (no specific guidance)'}")
+        return True
 
     def __load_last_conversation(self, character: Character) -> list[ChatCompletionMessageParam]:
         """Loads only the most recent conversation for a given character.

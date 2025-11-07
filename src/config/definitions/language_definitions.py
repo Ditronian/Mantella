@@ -21,7 +21,15 @@ class LanguageDefinitions:
                         This must be typed exactly (case-insensitive) as the first player input to load the full conversation history.
                         If any other text is included, the keyword will not be recognized."""
         return ConfigValueString("resume_conversation_keyword","Resume Conversation Keyword",description,"restart")
-    
+
+    @staticmethod
+    def get_redo_conversation_keyword_config_value() -> ConfigValue:
+        description = """The keyword prefix to redo the last NPC response with guidance.
+                        Format: 'redo: your guidance here' (case-insensitive).
+                        Example: 'redo: Erdi should be more conflicted'
+                        This will remove the previous NPC response and regenerate it with your guidance."""
+        return ConfigValueString("redo_conversation_keyword","Redo Response Keyword",description,"redo")
+
     @staticmethod
     def get_goodbye_npc_response() -> ConfigValue:
         return ConfigValueString("goodbye_npc_response","NPC Response: Goodbye","The response the NPC gives at the end of the conversation.","Safe travels",tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])

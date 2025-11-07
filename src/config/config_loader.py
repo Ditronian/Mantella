@@ -161,6 +161,7 @@ class ConfigLoader:
             self.language = self.__definitions.get_string_value("language")
             self.end_conversation_keyword = self.__definitions.get_string_value("end_conversation_keyword")
             self.resume_conversation_keyword = self.__definitions.get_string_value("resume_conversation_keyword")
+            self.redo_conversation_keyword = self.__definitions.get_string_value("redo_conversation_keyword")
             self.goodbye_npc_response = self.__definitions.get_string_value("goodbye_npc_response")
             self.collecting_thoughts_npc_response = self.__definitions.get_string_value("collecting_thoughts_npc_response")
             for a in self.__actions:
