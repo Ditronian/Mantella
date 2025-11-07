@@ -119,6 +119,7 @@ class MantellaConfigValueDefinitionsNew:
         language_category = ConfigValueGroup("Language", "Language", "Change the language used by Mantella as well as keywords.", on_value_change_callback)
         language_category.add_config_value(LanguageDefinitions.get_language_config_value())
         language_category.add_config_value(LanguageDefinitions.get_end_conversation_keyword_config_value())
+        language_category.add_config_value(LanguageDefinitions.get_resume_conversation_keyword_config_value())
         language_category.add_config_value(LanguageDefinitions.get_goodbye_npc_response())
         language_category.add_config_value(LanguageDefinitions.get_collecting_thoughts_npc_response())
         for action in actions:

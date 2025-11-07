@@ -3,7 +3,9 @@
     "allow": [
       "WebSearch",
       "Bash(./MantellaEnv/Scripts/python.exe -c \"import onnxruntime\")",
-      "Bash(./MantellaEnv/Scripts/pip.exe list:*)"
+      "Bash(./MantellaEnv/Scripts/pip.exe list:*)",
+      "Bash(.\\MantellaEnv\\Scripts\\python.exe:*)",
+      "Bash(./MantellaEnv/Scripts/python.exe:*)"
     ],
     "deny": [],
     "ask": []

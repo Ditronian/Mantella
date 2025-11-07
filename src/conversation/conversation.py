@@ -3,6 +3,7 @@ import logging
 from threading import Thread, Lock
 import time
 from typing import Any
+from openai.types.chat import ChatCompletionMessageParam
 from src.llm.ai_client import AIClient
 from src.llm.sentence_content import SentenceTypeEnum, sentence_content
 from src.characters_manager import Characters
@@ -214,6 +215,17 @@ class conversation:
             player_voiceline = self.__get_player_voiceline(player_character, player_text)
             text = new_message.text
             logging.log(23, f"Text passed to NPC: {text}")
+
+        # Check if player wants to resume from previous conversation history
+        if self.__should_resume_conversation(text):
+            logging.info("Resume conversation keyword detected. Loading previous conversation history...")
+            self.__load_previous_conversation_history()
+            # Remove the "restart" message from the thread since it's not part of the actual conversation
+            # We need to remove the message we just added
+            # For now, just mark it as system-generated so it doesn't get saved
+            new_message.is_system_generated_message = True
+            # Don't start generation - just return so game can continue
+            return player_text, events_need_updating, player_voiceline
 
         ejected_npc = self.__does_dismiss_npc_from_conversation(text)
         if ejected_npc:
@@ -445,6 +457,132 @@ class conversation:
 
         # check if user is ending conversation
         return Transcriber.activation_name_exists(transcript_cleaned, self.__end_conversation_keywords)
+
+    def __should_resume_conversation(self, last_user_text: str) -> bool:
+        """Checks if the player input is exactly the resume conversation keyword
+
+        Args:
+            last_user_text (str): the text to check
+
+        Returns:
+            bool: true if player wants to resume from previous history, false otherwise
+        """
+        # Get the configured keyword and clean both for comparison
+        resume_keyword = self.__context.config.resume_conversation_keyword.strip().lower()
+        transcript_cleaned = utils.clean_text(last_user_text).strip().lower()
+
+        # Must be an exact match - no extra words allowed
+        return transcript_cleaned == resume_keyword
+
+    def __load_last_conversation(self, character: Character) -> list[ChatCompletionMessageParam]:
+        """Loads only the most recent conversation for a given character.
+
+        The conversation log file contains an array of conversations:
+        [
+            [conversation1_messages],
+            [conversation2_messages],
+            [conversation3_messages]  <-- We want this one (the last)
+        ]
+
+        Args:
+            character: The character whose conversation history to load
+
+        Returns:
+            list: The messages from the most recent conversation, or empty list if none exists
+        """
+        import json
+        import os
+
+        # Get the path to the character's conversation history file
+        conversation_history_file = conversation_log._conversation_log__get_path_to_conversation_history_file(character, self.__context.world_id)
+
+        if os.path.exists(conversation_history_file):
+            try:
+                with open(conversation_history_file, 'r', encoding='utf-8') as f:
+                    conversation_history = json.load(f)
+
+                # conversation_history is an array of conversations
+                # Each conversation is an array of messages
+                # We only want the LAST conversation
+                if conversation_history and len(conversation_history) > 0:
+                    last_conversation = conversation_history[-1]  # Get the last element
+                    logging.info(f"Found {len(conversation_history)} total conversations for {character.name}, loading the most recent one with {len(last_conversation)} messages")
+                    return last_conversation
+                else:
+                    return []
+            except Exception as e:
+                logging.error(f"Error loading conversation history for {character.name}: {e}")
+                return []
+        else:
+            logging.info(f"No conversation history file found for {character.name}")
+            return []
+
+    @utils.time_it
+    def __load_previous_conversation_history(self):
+        """Loads the most recent conversation from disk into the current message thread.
+        This allows resuming a conversation that was interrupted or ended prematurely.
+
+        Note: Only loads the LAST conversation from the character's history file, not all conversations.
+        """
+        try:
+            all_characters = self.__context.npcs_in_conversation.get_all_characters()
+
+            # For multi-NPC conversations, we need to load and merge histories from all NPCs
+            # For 1-on-1, there's typically just one NPC (plus player)
+            loaded_message_count = 0
+
+            for character in all_characters:
+                if not character.is_player_character:
+                    # Load ONLY the last conversation from the character's history
+                    # The conversation log stores an array of conversations, we only want the most recent one
+                    previous_messages = self.__load_last_conversation(character)
+
+                    if previous_messages:
+                        logging.info(f"Loading {len(previous_messages)} previous messages for {character.name}")
+
+                        # Convert OpenAI format messages to Mantella message objects
+                        for msg in previous_messages:
+                            role = msg.get('role', '')
+                            content = msg.get('content', '')
+
+                            if role == 'user':
+                                # Reconstruct user_message
+                                player_char = self.__context.npcs_in_conversation.get_player_character()
+                                player_name = player_char.name if player_char else ""
+                                restored_msg = user_message(self.__context.config, content, player_name, False)
+                                restored_msg.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+                                self.__messages.add_message(restored_msg)
+                                loaded_message_count += 1
+                            elif role == 'assistant':
+                                # Reconstruct assistant_message
+                                # Note: We create a simple assistant message with just the text
+                                # Since assistant_message uses sentences internally, we need to override get_formatted_content
+                                # to return the loaded content directly
+                                restored_msg = assistant_message(self.__context.config, False)
+                                restored_msg.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+                                restored_msg.text = content
+
+                                # Override get_formatted_content to return the loaded text instead of building from sentences
+                                # This is necessary because we're loading from saved text, not reconstructing full sentence objects
+                                # Use default parameter to capture content value (avoids closure bug where all lambdas reference the last loop value)
+                                restored_msg.get_formatted_content = lambda c=content: c
+
+                                self.__messages.add_message(restored_msg)
+                                loaded_message_count += 1
+
+                        # For multi-NPC, we only need to load once since all NPCs share the same conversation
+                        # The conversation_log saves the same messages for all participants
+                        break
+
+            if loaded_message_count > 0:
+                logging.info(f"Successfully loaded {loaded_message_count} messages from previous conversation history")
+            else:
+                logging.info("No previous conversation history found to load")
+
+        except Exception as e:
+            logging.error(f"Failed to load previous conversation history: {e}")
+            import traceback
+            traceback.print_exc()
 
     @utils.time_it
     def __does_dismiss_npc_from_conversation(self, last_user_text: str) -> Character | None:

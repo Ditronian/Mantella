@@ -14,6 +14,13 @@ class LanguageDefinitions:
         description = """The keyword(s) Mantella will listen out for to end the conversation (lowercase / uppercase does not matter).
                         To add multiple options, you can split keywords using commas."""
         return ConfigValueString("end_conversation_keyword","End Conversation Keyword(s)",description,"goodbye, bye, good-bye, good bye, good-by, good by, good to buy")
+
+    @staticmethod
+    def get_resume_conversation_keyword_config_value() -> ConfigValue:
+        description = """The exact keyword to restart a conversation from its previous history.
+                        This must be typed exactly (case-insensitive) as the first player input to load the full conversation history.
+                        If any other text is included, the keyword will not be recognized."""
+        return ConfigValueString("resume_conversation_keyword","Resume Conversation Keyword",description,"restart")
     
     @staticmethod
     def get_goodbye_npc_response() -> ConfigValue:
