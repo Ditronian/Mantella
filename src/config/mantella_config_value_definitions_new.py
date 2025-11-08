@@ -121,6 +121,7 @@ class MantellaConfigValueDefinitionsNew:
         language_category.add_config_value(LanguageDefinitions.get_end_conversation_keyword_config_value())
         language_category.add_config_value(LanguageDefinitions.get_resume_conversation_keyword_config_value())
         language_category.add_config_value(LanguageDefinitions.get_redo_conversation_keyword_config_value())
+        language_category.add_config_value(LanguageDefinitions.get_direct_conversation_keyword_config_value())
         language_category.add_config_value(LanguageDefinitions.get_goodbye_npc_response())
         language_category.add_config_value(LanguageDefinitions.get_collecting_thoughts_npc_response())
         for action in actions:

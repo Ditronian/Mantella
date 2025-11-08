@@ -31,6 +31,14 @@ class LanguageDefinitions:
         return ConfigValueString("redo_conversation_keyword","Redo Response Keyword",description,"redo")
 
     @staticmethod
+    def get_direct_conversation_keyword_config_value() -> ConfigValue:
+        description = """The keyword prefix to directly instruct NPCs with explicit directions.
+                        Format: 'direct: your instruction here' (case-insensitive).
+                        Example: 'direct: Tullius speaks and mentions reports from the front lines'
+                        This allows you to guide NPC behavior without confusing it with in-game events."""
+        return ConfigValueString("direct_conversation_keyword","Direct NPC Keyword",description,"direct")
+
+    @staticmethod
     def get_goodbye_npc_response() -> ConfigValue:
         return ConfigValueString("goodbye_npc_response","NPC Response: Goodbye","The response the NPC gives at the end of the conversation.","Safe travels",tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
 

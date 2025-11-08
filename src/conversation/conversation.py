@@ -218,10 +218,11 @@ class conversation:
             # This prevents TTS generation for command keywords
             is_resume = self.__should_resume_conversation(text)
             redo_guidance = self.__should_redo_response(text)
+            direct_instruction = self.__should_direct_npc(text)
 
             # Only generate player voiceline if this isn't a special command
             # Note: redo_guidance can be None (not a redo), "" (redo without guidance), or a string (redo with guidance)
-            if not is_resume and redo_guidance is None:
+            if not is_resume and redo_guidance is None and direct_instruction is None:
                 player_voiceline = self.__get_player_voiceline(player_character, player_text)
             else:
                 player_voiceline = None  # No voiceline for command keywords
@@ -252,6 +253,18 @@ class conversation:
             # Execute the redo
             if self.__redo_last_response(redo_guidance, player_character.name if player_character else ""):
                 # Start new generation with the redo directive
+                self.__start_generating_npc_sentences()
+            # Return so game can continue
+            return player_text, events_need_updating, player_voiceline
+
+        # Check if player is giving direct instructions to NPCs
+        if direct_instruction is not None:
+            logging.info(f"Direct command detected: {direct_instruction}")
+            # Mark the original "Direct: ..." message as system-generated so it doesn't get saved
+            new_message.is_system_generated_message = True
+            # Add the director's instruction
+            if self.__add_direct_instruction(direct_instruction, player_character.name if player_character else ""):
+                # Start new generation with the direct instruction
                 self.__start_generating_npc_sentences()
             # Return so game can continue
             return player_text, events_need_updating, player_voiceline
@@ -576,6 +589,54 @@ class conversation:
         self.__messages.add_message(redo_directive)
 
         logging.info(f"Added redo directive{' with guidance: ' + guidance if guidance else ' (no specific guidance)'}")
+        return True
+
+    def __should_direct_npc(self, last_user_text: str) -> str | None:
+        """Checks if the player input is a direct command and extracts the instruction
+
+        Args:
+            last_user_text (str): the text to check
+
+        Returns:
+            str | None: the instruction text, or None if not a direct command
+        """
+        import re
+
+        # Get the configured keyword
+        direct_keyword = self.__context.config.direct_conversation_keyword.strip().lower()
+
+        # Pattern: "direct: instruction text here" (requires colon and instruction)
+        pattern = rf"^{re.escape(direct_keyword)}:\s*(.+)$"
+        match = re.match(pattern, last_user_text.strip(), re.IGNORECASE)
+        if match:
+            instruction = match.group(1).strip()
+            return instruction
+
+        return None  # Not a direct command
+
+    def __add_direct_instruction(self, instruction: str, player_name: str) -> bool:
+        """Adds a director's instruction to guide NPC behavior
+
+        Args:
+            instruction (str): the instruction for the NPC
+            player_name (str): the player's name for the directive message
+
+        Returns:
+            bool: True if successful
+        """
+        # Add directive as user_message with clear marking
+        directive_text = f"<<<DIRECTOR'S INSTRUCTION: {instruction}>>>"
+
+        direct_directive = user_message(
+            self.__context.config,
+            directive_text,
+            player_name,
+            is_system_generated_message=False  # Keep it in history for context
+        )
+        direct_directive.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+        self.__messages.add_message(direct_directive)
+
+        logging.info(f"Added director's instruction: {instruction}")
         return True
 
     def __load_last_conversation(self, character: Character) -> list[ChatCompletionMessageParam]:
