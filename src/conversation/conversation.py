@@ -475,6 +475,33 @@ class conversation:
             self.__sentences.put_at_front(collecting_thoughts_sentence)
     
     @utils.time_it
+    def trigger_auto_continuation(self):
+        """Triggers the NPC auto-continuation feature.
+        Called when the game mod's timer expires and the player hasn't responded.
+        Injects the continuation directive and starts NPC generation.
+        """
+        if not self.__context.config.npc_auto_continue_enabled:
+            logging.debug("Auto-continuation triggered but feature is disabled in config")
+            return
+
+        logging.info("NPC auto-continuation triggered - injecting continuation directive")
+
+        # Create a system-generated user message with the continuation prompt
+        continuation_message = user_message(
+            self.__context.config,
+            self.__context.config.npc_auto_continue_prompt,
+            "",  # No speaker name for system messages
+            True  # Mark as system-generated
+        )
+        continuation_message.is_multi_npc_message = False
+
+        # Add the continuation directive to the message thread
+        self.__messages.add_message(continuation_message)
+
+        # Start generating NPC response
+        self.__start_generating_npc_sentences()
+
+    @utils.time_it
     def reload_conversation(self):
         """Reloads the conversation
         """

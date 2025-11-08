@@ -140,6 +140,7 @@ class MantellaConfigValueDefinitionsNew:
         prompts_category.add_config_value(PromptDefinitions.get_vision_prompt_config_value())
         prompts_category.add_config_value(PromptDefinitions.get_radiant_start_prompt_config_value())
         prompts_category.add_config_value(PromptDefinitions.get_radiant_end_prompt_config_value())
+        prompts_category.add_config_value(PromptDefinitions.get_npc_auto_continue_prompt_config_value())
         result.add_base_group(prompts_category)
 
         startup_category = ConfigValueGroup("Startup", "Startup", "Startup settings.", on_value_change_callback)
