@@ -8,6 +8,7 @@ from src.config.types.config_value_int import ConfigValueInt
 from src.config.types.config_value_path import ConfigValuePath
 from src.config.types.config_value_selection import ConfigValueSelection
 from src.config.types.config_value_string import ConfigValueString
+from src.config.types.config_value_weighted_string_list import ConfigValueWeightedStringList
 from src.config.types.config_value_visitor import ConfigValueVisitor
 
 
@@ -97,6 +98,24 @@ class ConfigJsonWriter(ConfigValueVisitor):
         self.__add_id_name_and_description(result, config_value)
         result[self.KEY_VALUE] = config_value.value
         result[self.KEY_PATH_MUST_BE_PRESENT] = config_value.File_or_folder_that_must_be_present
+        self.__add_constraints(result, config_value)
+        self.__content.append(result)
+
+    def visit_ConfigValueWeightedStringList(self, config_value: ConfigValueWeightedStringList):
+        result: dict[str, Any] = {}
+        result[self.KEY_TYPE] = "weighted_string_list"
+        self.__add_id_name_and_description(result, config_value)
+        result[self.KEY_VALUE] = [ws.to_dict() for ws in config_value.value]
+        self.__add_constraints(result, config_value)
+        self.__content.append(result)
+
+    def visit_ConfigValueMultiSelection(self, config_value: ConfigValueSelection):
+        # This method was missing from the class but is in the visitor interface
+        result: dict[str, Any] = {}
+        result[self.KEY_TYPE] = "multi_selection"
+        self.__add_id_name_and_description(result, config_value)
+        result[self.KEY_VALUE] = config_value.value
+        result[self.KEY_SELECTION_OPTIONS] = config_value.options
         self.__add_constraints(result, config_value)
         self.__content.append(result)
 

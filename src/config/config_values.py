@@ -10,6 +10,7 @@ from src.config.types.config_value_int import ConfigValueInt
 from src.config.types.config_value_path import ConfigValuePath
 from src.config.types.config_value_selection import ConfigValueSelection
 from src.config.types.config_value_string import ConfigValueString
+from src.config.types.config_value_weighted_string_list import ConfigValueWeightedStringList
 from src.config.types.config_value_visitor import ConfigValueVisitor
 
 
@@ -25,6 +26,7 @@ class ConfigValues(ConfigValueVisitor):
         self.__selection_enums: dict[Enum, tuple[ConfigValueSelection, Enum]] = {}
         self.__multi_selection_values: dict[str, tuple[ConfigValueMultiSelection, str]] = {}
         self.__path_values: dict[str, tuple[ConfigValuePath, str]] = {}
+        self.__weighted_string_list_values: dict[str, tuple[ConfigValueWeightedStringList, str]] = {}
         self.__constraint_violations: dict[str, list[str]] = {}
         self.__last_section_id: str = ""
 
@@ -75,7 +77,18 @@ class ConfigValues(ConfigValueVisitor):
             
     def get_string_list_value(self, identifier: str) -> list[str]:
         return self.__get_value(self.__multi_selection_values, identifier)
-    
+
+    def get_weighted_string_list_value(self, identifier: str) -> ConfigValueWeightedStringList:
+        """Returns the ConfigValueWeightedStringList object itself for weighted random selection."""
+        if self.__weighted_string_list_values.__contains__(identifier):
+            config_value, category = self.__weighted_string_list_values[identifier]
+            config_value: ConfigValueWeightedStringList = config_value
+            result: ConfigValueConstraintResult = config_value.does_value_cause_error(config_value.value)
+            if not result.is_success:
+                self.__add_constraint_violation(config_value, result.error_message)
+            return config_value
+        raise Exception(f"Could not find weighted string list config value {identifier} in list of definitions")
+
     def clear_constraint_violations(self):
         self.__constraint_violations.clear()
 
@@ -110,6 +123,10 @@ class ConfigValues(ConfigValueVisitor):
 
     def visit_ConfigValuePath(self, config_value: ConfigValuePath):
         self.__path_values[config_value.identifier] = config_value, self.__last_section_id
+        self.__all_config_values[config_value.identifier] = config_value
+
+    def visit_ConfigValueWeightedStringList(self, config_value: ConfigValueWeightedStringList):
+        self.__weighted_string_list_values[config_value.identifier] = config_value, self.__last_section_id
         self.__all_config_values[config_value.identifier] = config_value
 
     def __add_constraint_violation(self, config_value: ConfigValue, text: str):

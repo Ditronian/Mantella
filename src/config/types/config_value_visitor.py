@@ -33,3 +33,7 @@ class ConfigValueVisitor(ABC):
     @abstractmethod
     def visit_ConfigValuePath(self, config_value):
         pass
+
+    @abstractmethod
+    def visit_ConfigValueWeightedStringList(self, config_value):
+        pass

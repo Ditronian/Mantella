@@ -2,6 +2,7 @@
 from regex import Regex
 from src.config.types.config_value import ConfigValue
 from src.config.types.config_value_string import ConfigValueString
+from src.config.types.config_value_weighted_string_list import ConfigValueWeightedStringList, WeightedString
 from src.config.config_value_constraint import ConfigValueConstraint, ConfigValueConstraintResult
 
 
@@ -230,6 +231,20 @@ class PromptDefinitions:
     def get_npc_auto_continue_prompt_config_value() -> ConfigValue:
         npc_auto_continue_prompt_description = """The directive sent to the LLM when the auto-continuation timer expires.
                                                 This prompt is injected when the player has not responded within the configured delay.
-                                                The NPC will continue the conversation naturally based on this directive."""
+                                                The NPC will continue the conversation naturally based on this directive.
+                                                Multiple prompts can be defined with weights - a random prompt will be selected based on the weights each time."""
+
         npc_auto_continue_prompt = """The player has not responded. You should continue the conversation naturally. You may: elaborate on what you previously said, ask a follow-up question, start a new related topic, comment on the silence, or make an observation about your surroundings."""
-        return ConfigValueString("npc_auto_continue_prompt","NPC Auto-Continuation Prompt",npc_auto_continue_prompt_description,npc_auto_continue_prompt,[PromptDefinitions.PromptChecker([])])
+
+        # Default: just the one existing prompt with weight 1.0
+        default_prompts = [
+            WeightedString(npc_auto_continue_prompt, weight=1.0)
+        ]
+
+        return ConfigValueWeightedStringList(
+            "npc_auto_continue_prompt",
+            "NPC Auto-Continuation Prompts",
+            npc_auto_continue_prompt_description,
+            default_prompts,
+            []
+        )

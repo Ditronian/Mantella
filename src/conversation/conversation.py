@@ -482,12 +482,17 @@ class conversation:
         """
         logging.info("NPC auto-continuation triggered - injecting continuation directive")
 
-        # Create a system-generated user message with the continuation prompt
+        # Select a random weighted prompt from the configured list
+        selected_prompt = self.__context.config.npc_auto_continue_prompt_weighted.get_random_weighted_choice()
+        logging.log(28, f"Selected auto-continuation prompt: {selected_prompt}")
+
+        # Create a user message with the continuation prompt
+        # Keep it in history (is_system_generated_message=False) so it provides context for the LLM
         continuation_message = user_message(
             self.__context.config,
-            self.__context.config.npc_auto_continue_prompt,
+            selected_prompt,
             "",  # No speaker name for system messages
-            True  # Mark as system-generated
+            False  # Keep in history for context (similar to Direct/Redo directives)
         )
         continuation_message.is_multi_npc_message = False
 
