@@ -480,10 +480,6 @@ class conversation:
         Called when the game mod's timer expires and the player hasn't responded.
         Injects the continuation directive and starts NPC generation.
         """
-        if not self.__context.config.npc_auto_continue_enabled:
-            logging.debug("Auto-continuation triggered but feature is disabled in config")
-            return
-
         logging.info("NPC auto-continuation triggered - injecting continuation directive")
 
         # Create a system-generated user message with the continuation prompt
