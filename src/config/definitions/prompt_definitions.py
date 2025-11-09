@@ -222,6 +222,14 @@ class PromptDefinitions:
     @staticmethod
     def get_radiant_end_prompt_config_value() -> ConfigValue:
         radiant_end_prompt_description = """The final prompt sent to the LLM before ending a radiant conversation.
-                                            This prompt is used to guide the LLM to end the conversation naturally.""" 
+                                            This prompt is used to guide the LLM to end the conversation naturally."""
         radiant_end_prompt = """Please wrap up the current topic between the NPCs in a natural way. Nobody is leaving, so there is no need for formal goodbyes."""
         return ConfigValueString("radiant_end_prompt","Radiant End Prompt",radiant_end_prompt_description,radiant_end_prompt,[PromptDefinitions.PromptChecker([])])
+
+    @staticmethod
+    def get_npc_auto_continue_prompt_config_value() -> ConfigValue:
+        npc_auto_continue_prompt_description = """The directive sent to the LLM when the auto-continuation timer expires.
+                                                This prompt is injected when the player has not responded within the configured delay.
+                                                The NPC will continue the conversation naturally based on this directive."""
+        npc_auto_continue_prompt = """The player has not responded. You should continue the conversation naturally. You may: elaborate on what you previously said, ask a follow-up question, start a new related topic, comment on the silence, or make an observation about your surroundings."""
+        return ConfigValueString("npc_auto_continue_prompt","NPC Auto-Continuation Prompt",npc_auto_continue_prompt_description,npc_auto_continue_prompt,[PromptDefinitions.PromptChecker([])])

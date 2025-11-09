@@ -110,7 +110,7 @@ class assistant_message(message):
         lastActor: Character | None = None
         was_last_sentence_narration: bool = False
         for sentence in self.__sentences:
-            if self.is_multi_npc_message and lastActor != sentence.speaker:
+            if lastActor != sentence.speaker:  # Always add name prefix for clarity in conversation logs
                 lastActor = sentence.speaker
                 was_last_sentence_narration = False
                 result += "\n" + lastActor.name +':'

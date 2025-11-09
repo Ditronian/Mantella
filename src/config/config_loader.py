@@ -160,6 +160,9 @@ class ConfigLoader:
 
             self.language = self.__definitions.get_string_value("language")
             self.end_conversation_keyword = self.__definitions.get_string_value("end_conversation_keyword")
+            self.resume_conversation_keyword = self.__definitions.get_string_value("resume_conversation_keyword")
+            self.redo_conversation_keyword = self.__definitions.get_string_value("redo_conversation_keyword")
+            self.direct_conversation_keyword = self.__definitions.get_string_value("direct_conversation_keyword")
             self.goodbye_npc_response = self.__definitions.get_string_value("goodbye_npc_response")
             self.collecting_thoughts_npc_response = self.__definitions.get_string_value("collecting_thoughts_npc_response")
             for a in self.__actions:
@@ -313,6 +316,7 @@ LLM parameter list must follow the Python dictionary format: https://www.w3schoo
 
             self.radiant_start_prompt = self.__definitions.get_string_value("radiant_start_prompt")
             self.radiant_end_prompt = self.__definitions.get_string_value("radiant_end_prompt")
+            self.npc_auto_continue_prompt = self.__definitions.get_string_value("npc_auto_continue_prompt")
             self.memory_prompt = self.__definitions.get_string_value("memory_prompt")
             self.resummarize_prompt = self.__definitions.get_string_value("resummarize_prompt")
             self.vision_prompt = self.__definitions.get_string_value("vision_prompt")

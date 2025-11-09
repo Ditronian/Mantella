@@ -3,6 +3,7 @@ import logging
 from threading import Thread, Lock
 import time
 from typing import Any
+from openai.types.chat import ChatCompletionMessageParam
 from src.llm.ai_client import AIClient
 from src.llm.sentence_content import SentenceTypeEnum, sentence_content
 from src.characters_manager import Characters
@@ -210,10 +211,63 @@ class conversation:
             new_message: user_message = user_message(self.__context.config, player_text, player_character.name, False)
             new_message.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
             new_message = self.update_game_events(new_message)
-            self.__messages.add_message(new_message)
-            player_voiceline = self.__get_player_voiceline(player_character, player_text)
             text = new_message.text
             logging.log(23, f"Text passed to NPC: {text}")
+
+            # Check for special keywords BEFORE generating player voiceline or adding to messages
+            # This prevents TTS generation for command keywords
+            is_resume = self.__should_resume_conversation(text)
+            redo_guidance = self.__should_redo_response(text)
+            direct_instruction = self.__should_direct_npc(text)
+
+            # Only generate player voiceline if this isn't a special command
+            # Note: redo_guidance can be None (not a redo), "" (redo without guidance), or a string (redo with guidance)
+            if not is_resume and redo_guidance is None and direct_instruction is None:
+                player_voiceline = self.__get_player_voiceline(player_character, player_text)
+            else:
+                player_voiceline = None  # No voiceline for command keywords
+
+            # Now add message to thread
+            self.__messages.add_message(new_message)
+
+        # Check if player wants to resume from previous conversation history
+        if self.__should_resume_conversation(text):
+            logging.info("Resume conversation keyword detected. Loading previous conversation history...")
+            self.__load_previous_conversation_history()
+            # Remove the "restart" message from the thread since it's not part of the actual conversation
+            # We need to remove the message we just added
+            # For now, just mark it as system-generated so it doesn't get saved
+            new_message.is_system_generated_message = True
+            # Don't start generation - just return so game can continue
+            return player_text, events_need_updating, player_voiceline
+
+        # Check if player wants to redo the last NPC response
+        # redo_guidance is None if not a redo, "" if redo without guidance, or a string if redo with guidance
+        if redo_guidance is not None:
+            if redo_guidance:
+                logging.info(f"Redo command detected with guidance: {redo_guidance}")
+            else:
+                logging.info("Redo command detected (no specific guidance)")
+            # Mark the original "Redo: ..." message as system-generated so it doesn't get saved
+            new_message.is_system_generated_message = True
+            # Execute the redo
+            if self.__redo_last_response(redo_guidance, player_character.name if player_character else ""):
+                # Start new generation with the redo directive
+                self.__start_generating_npc_sentences()
+            # Return so game can continue
+            return player_text, events_need_updating, player_voiceline
+
+        # Check if player is giving direct instructions to NPCs
+        if direct_instruction is not None:
+            logging.info(f"Direct command detected: {direct_instruction}")
+            # Mark the original "Direct: ..." message as system-generated so it doesn't get saved
+            new_message.is_system_generated_message = True
+            # Add the director's instruction
+            if self.__add_direct_instruction(direct_instruction, player_character.name if player_character else ""):
+                # Start new generation with the direct instruction
+                self.__start_generating_npc_sentences()
+            # Return so game can continue
+            return player_text, events_need_updating, player_voiceline
 
         ejected_npc = self.__does_dismiss_npc_from_conversation(text)
         if ejected_npc:
@@ -421,6 +475,29 @@ class conversation:
             self.__sentences.put_at_front(collecting_thoughts_sentence)
     
     @utils.time_it
+    def trigger_auto_continuation(self):
+        """Triggers the NPC auto-continuation feature.
+        Called when the game mod's timer expires and the player hasn't responded.
+        Injects the continuation directive and starts NPC generation.
+        """
+        logging.info("NPC auto-continuation triggered - injecting continuation directive")
+
+        # Create a system-generated user message with the continuation prompt
+        continuation_message = user_message(
+            self.__context.config,
+            self.__context.config.npc_auto_continue_prompt,
+            "",  # No speaker name for system messages
+            True  # Mark as system-generated
+        )
+        continuation_message.is_multi_npc_message = False
+
+        # Add the continuation directive to the message thread
+        self.__messages.add_message(continuation_message)
+
+        # Start generating NPC response
+        self.__start_generating_npc_sentences()
+
+    @utils.time_it
     def reload_conversation(self):
         """Reloads the conversation
         """
@@ -445,6 +522,255 @@ class conversation:
 
         # check if user is ending conversation
         return Transcriber.activation_name_exists(transcript_cleaned, self.__end_conversation_keywords)
+
+    def __should_resume_conversation(self, last_user_text: str) -> bool:
+        """Checks if the player input is exactly the resume conversation keyword
+
+        Args:
+            last_user_text (str): the text to check
+
+        Returns:
+            bool: true if player wants to resume from previous history, false otherwise
+        """
+        # Get the configured keyword and clean both for comparison
+        resume_keyword = self.__context.config.resume_conversation_keyword.strip().lower()
+        transcript_cleaned = utils.clean_text(last_user_text).strip().lower()
+
+        # Must be an exact match - no extra words allowed
+        return transcript_cleaned == resume_keyword
+
+    def __should_redo_response(self, last_user_text: str) -> str | None:
+        """Checks if the player input is a redo command and extracts the guidance
+
+        Args:
+            last_user_text (str): the text to check
+
+        Returns:
+            str | None: the guidance text (can be empty string if no guidance provided), or None if not a redo command
+        """
+        import re
+
+        # Get the configured keyword
+        redo_keyword = self.__context.config.redo_conversation_keyword.strip().lower()
+
+        # Pattern 1: "redo: guidance text here" (with guidance)
+        pattern_with_guidance = rf"^{re.escape(redo_keyword)}:\s*(.+)$"
+        match = re.match(pattern_with_guidance, last_user_text.strip(), re.IGNORECASE)
+        if match:
+            guidance = match.group(1).strip()
+            return guidance
+
+        # Pattern 2: just "redo" with optional colon but no guidance (redo without guidance)
+        pattern_no_guidance = rf"^{re.escape(redo_keyword)}:?\s*$"
+        match = re.match(pattern_no_guidance, last_user_text.strip(), re.IGNORECASE)
+        if match:
+            return ""  # Empty string means redo without guidance
+
+        return None  # Not a redo command at all
+
+    def __redo_last_response(self, guidance: str, player_name: str) -> bool:
+        """Removes the last NPC response batch and adds redo directive
+
+        Args:
+            guidance (str): the guidance for regenerating the response
+            player_name (str): the player's name for the directive message
+
+        Returns:
+            bool: True if successful, False if no assistant message found
+        """
+        # Find and remove the last assistant_message
+        removed = False
+        removed_content = ""
+        for i in range(len(self.__messages._message_thread__messages) - 1, -1, -1):
+            if isinstance(self.__messages._message_thread__messages[i], assistant_message):
+                removed_msg = self.__messages._message_thread__messages.pop(i)
+                removed_content = removed_msg.get_formatted_content()
+                logging.info(f"Removed last NPC response for redo (first 100 chars): {removed_content[:100]}...")
+                removed = True
+                break
+
+        if not removed:
+            logging.warning("Redo requested but no assistant message found to remove")
+            return False
+
+        # Add redo directive as user_message with clear marking
+        # Include the removed response for context so LLM knows what it said before
+        if guidance:
+            # Redo with specific guidance
+            directive_text = f"<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response with this guidance: {guidance}>>>"
+        else:
+            # Redo without guidance - just try again differently
+            directive_text = f"<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response differently.>>>"
+
+        redo_directive = user_message(
+            self.__context.config,
+            directive_text,
+            player_name,
+            is_system_generated_message=False  # Keep it in history for context
+        )
+        redo_directive.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+        self.__messages.add_message(redo_directive)
+
+        logging.info(f"Added redo directive{' with guidance: ' + guidance if guidance else ' (no specific guidance)'}")
+        return True
+
+    def __should_direct_npc(self, last_user_text: str) -> str | None:
+        """Checks if the player input is a direct command and extracts the instruction
+
+        Args:
+            last_user_text (str): the text to check
+
+        Returns:
+            str | None: the instruction text, or None if not a direct command
+        """
+        import re
+
+        # Get the configured keyword
+        direct_keyword = self.__context.config.direct_conversation_keyword.strip().lower()
+
+        # Pattern: "direct: instruction text here" (requires colon and instruction)
+        pattern = rf"^{re.escape(direct_keyword)}:\s*(.+)$"
+        match = re.match(pattern, last_user_text.strip(), re.IGNORECASE)
+        if match:
+            instruction = match.group(1).strip()
+            return instruction
+
+        return None  # Not a direct command
+
+    def __add_direct_instruction(self, instruction: str, player_name: str) -> bool:
+        """Adds a director's instruction to guide NPC behavior
+
+        Args:
+            instruction (str): the instruction for the NPC
+            player_name (str): the player's name for the directive message
+
+        Returns:
+            bool: True if successful
+        """
+        # Add directive as user_message with clear marking
+        directive_text = f"<<<DIRECTOR'S INSTRUCTION: {instruction}>>>"
+
+        direct_directive = user_message(
+            self.__context.config,
+            directive_text,
+            player_name,
+            is_system_generated_message=False  # Keep it in history for context
+        )
+        direct_directive.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+        self.__messages.add_message(direct_directive)
+
+        logging.info(f"Added director's instruction: {instruction}")
+        return True
+
+    def __load_last_conversation(self, character: Character) -> list[ChatCompletionMessageParam]:
+        """Loads only the most recent conversation for a given character.
+
+        The conversation log file contains an array of conversations:
+        [
+            [conversation1_messages],
+            [conversation2_messages],
+            [conversation3_messages]  <-- We want this one (the last)
+        ]
+
+        Args:
+            character: The character whose conversation history to load
+
+        Returns:
+            list: The messages from the most recent conversation, or empty list if none exists
+        """
+        import json
+        import os
+
+        # Get the path to the character's conversation history file
+        conversation_history_file = conversation_log._conversation_log__get_path_to_conversation_history_file(character, self.__context.world_id)
+
+        if os.path.exists(conversation_history_file):
+            try:
+                with open(conversation_history_file, 'r', encoding='utf-8') as f:
+                    conversation_history = json.load(f)
+
+                # conversation_history is an array of conversations
+                # Each conversation is an array of messages
+                # We only want the LAST conversation
+                if conversation_history and len(conversation_history) > 0:
+                    last_conversation = conversation_history[-1]  # Get the last element
+                    logging.info(f"Found {len(conversation_history)} total conversations for {character.name}, loading the most recent one with {len(last_conversation)} messages")
+                    return last_conversation
+                else:
+                    return []
+            except Exception as e:
+                logging.error(f"Error loading conversation history for {character.name}: {e}")
+                return []
+        else:
+            logging.info(f"No conversation history file found for {character.name}")
+            return []
+
+    @utils.time_it
+    def __load_previous_conversation_history(self):
+        """Loads the most recent conversation from disk into the current message thread.
+        This allows resuming a conversation that was interrupted or ended prematurely.
+
+        Note: Only loads the LAST conversation from the character's history file, not all conversations.
+        """
+        try:
+            all_characters = self.__context.npcs_in_conversation.get_all_characters()
+
+            # For multi-NPC conversations, we need to load and merge histories from all NPCs
+            # For 1-on-1, there's typically just one NPC (plus player)
+            loaded_message_count = 0
+
+            for character in all_characters:
+                if not character.is_player_character:
+                    # Load ONLY the last conversation from the character's history
+                    # The conversation log stores an array of conversations, we only want the most recent one
+                    previous_messages = self.__load_last_conversation(character)
+
+                    if previous_messages:
+                        logging.info(f"Loading {len(previous_messages)} previous messages for {character.name}")
+
+                        # Convert OpenAI format messages to Mantella message objects
+                        for msg in previous_messages:
+                            role = msg.get('role', '')
+                            content = msg.get('content', '')
+
+                            if role == 'user':
+                                # Reconstruct user_message
+                                player_char = self.__context.npcs_in_conversation.get_player_character()
+                                player_name = player_char.name if player_char else ""
+                                restored_msg = user_message(self.__context.config, content, player_name, False)
+                                restored_msg.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+                                self.__messages.add_message(restored_msg)
+                                loaded_message_count += 1
+                            elif role == 'assistant':
+                                # Reconstruct assistant_message
+                                # Note: We create a simple assistant message with just the text
+                                # Since assistant_message uses sentences internally, we need to override get_formatted_content
+                                # to return the loaded content directly
+                                restored_msg = assistant_message(self.__context.config, False)
+                                restored_msg.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+                                restored_msg.text = content
+
+                                # Override get_formatted_content to return the loaded text instead of building from sentences
+                                # This is necessary because we're loading from saved text, not reconstructing full sentence objects
+                                # Use default parameter to capture content value (avoids closure bug where all lambdas reference the last loop value)
+                                restored_msg.get_formatted_content = lambda c=content: c
+
+                                self.__messages.add_message(restored_msg)
+                                loaded_message_count += 1
+
+                        # For multi-NPC, we only need to load once since all NPCs share the same conversation
+                        # The conversation_log saves the same messages for all participants
+                        break
+
+            if loaded_message_count > 0:
+                logging.info(f"Successfully loaded {loaded_message_count} messages from previous conversation history")
+            else:
+                logging.info("No previous conversation history found to load")
+
+        except Exception as e:
+            logging.error(f"Failed to load previous conversation history: {e}")
+            import traceback
+            traceback.print_exc()
 
     @utils.time_it
     def __does_dismiss_npc_from_conversation(self, last_user_text: str) -> Character | None:

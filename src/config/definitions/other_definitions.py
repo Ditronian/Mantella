@@ -2,6 +2,7 @@ from src.conversation.action import action
 from src.config.types.config_value import ConfigValue, ConfigValueTag
 from src.config.types.config_value_bool import ConfigValueBool
 from src.config.types.config_value_int import ConfigValueInt
+from src.config.types.config_value_float import ConfigValueFloat
 from src.config.types.config_value_string import ConfigValueString
 from src.config.types.config_value_multi_selection import ConfigValueMultiSelection
 
@@ -17,7 +18,7 @@ class OtherDefinitions:
                                         - If enabled: Conversations are always started by the LLM.
                                         - If disabled: The LLM will not respond until the player speaks first."""
         return ConfigValueBool("automatic_greeting","Automatic Greeting",automatic_greeting_description,True)
-    
+
     #Conversation        
     @staticmethod
     def get_active_actions(actions: list[action]) -> ConfigValue:

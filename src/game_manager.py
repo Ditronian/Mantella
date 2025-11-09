@@ -79,13 +79,18 @@ class GameStateManager:
     def continue_conversation(self, input_json: dict[str, Any]) -> dict[str, Any]:
         if(not self.__talk ):
             return self.error_message("No running conversation.")
-        
+
         if input_json.__contains__(comm_consts.KEY_REQUEST_EXTRA_ACTIONS):
             extra_actions: list[str] = input_json[comm_consts.KEY_REQUEST_EXTRA_ACTIONS]
             if extra_actions.__contains__(comm_consts.ACTION_RELOADCONVERSATION):
                 self.__talk.reload_conversation()
 
         topicInfoID: int = int(input_json.get(comm_consts.KEY_CONTINUECONVERSATION_TOPICINFOFILE,1))
+
+        # Check if this is an auto-continuation request from the game mod
+        mantella_auto_continue: bool = input_json.get(comm_consts.KEY_AUTO_CONTINUE, False)
+        if mantella_auto_continue:
+            self.__talk.trigger_auto_continuation()
 
         self.__update_context(input_json)
 
