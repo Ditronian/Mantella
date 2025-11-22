@@ -121,10 +121,14 @@ class radiant(conversation_type):
         message_thread_to_adjust.modify_messages(prompt, True, True)
     
     @utils.time_it
-    def get_user_message(self, context_for_conversation: context, messages: message_thread) -> user_message | None:        
+    def get_user_message(self, context_for_conversation: context, messages: message_thread) -> user_message | None:
         text = ""
         if len(messages) == 1:
             text = self.__user_start_prompt
+            # Check for custom radiant topic
+            radiant_topic = context_for_conversation.get_custom_context_value("radiant_topic")
+            if radiant_topic:
+                text = f"Begin the conversation focused on the following topic. Stay on this subject unless it naturally concludes: {radiant_topic}\n\n{text}"
         elif len(messages) == 3:
             text = self.__user_end_prompt
         else:
