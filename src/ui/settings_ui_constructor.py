@@ -10,6 +10,7 @@ from src.config.types.config_value_float import ConfigValueFloat
 from src.config.types.config_value_selection import ConfigValueSelection
 from src.config.types.config_value_multi_selection import ConfigValueMultiSelection
 from src.config.types.config_value_string import ConfigValueString
+from src.config.types.config_value_weighted_string_list import ConfigValueWeightedStringList
 from src.config.config_value_constraint import ConfigValueConstraintResult
 from src.config.types.config_value import ConfigValue, ConfigValueTag
 from src.config.types.config_value_group import ConfigValueGroup
@@ -371,6 +372,48 @@ class SettingsUIConstructor(ConfigValueVisitor):
         def create_input_component(raw_config_value: ConfigValue) -> gr.Text:
             config_value = typing.cast(ConfigValuePath, raw_config_value)
             return gr.Text(value=config_value.value, show_label=False, container=False, max_lines=1)
-        
+
         self.__create_config_value_ui_element(config_value, create_input_component, True, True, True, [("Browse...", on_pick_click)])
+
+    def visit_ConfigValueWeightedStringList(self, config_value: ConfigValueWeightedStringList):
+        def create_input_component(raw_config_value: ConfigValue) -> gr.Text:
+            config_value = typing.cast(ConfigValueWeightedStringList, raw_config_value)
+            # Display as JSON for editing
+            json_str = config_value.to_json_string()
+            count_rows = self.__count_rows_in_text(json_str)
+            # Use at least 5 rows for better editing experience
+            return gr.Text(value=json_str,
+                    show_label=False,
+                    container=False,
+                    lines=max(5, count_rows),
+                    elem_classes="multiline-textbox")
+
+        # Custom on_change handler that parses JSON
+        def on_weighted_list_change(json_str: str) -> gr.Markdown:
+            result = config_value.parse(json_str)
+            if result.is_success:
+                logging.info(f'{config_value.name} set to {len(config_value.value)} weighted prompts')
+                return self._SettingsUIConstructor__construct_error_message_panel('', is_visible=False)
+            else:
+                return self._SettingsUIConstructor__construct_error_message_panel(result.error_message, is_visible=True)
+
+        # Create components manually since we need custom change handler
+        with gr.Column(variant="panel", scale=1):
+            self._SettingsUIConstructor__construct_name_description_constraints(config_value)
+            with gr.Row(equal_height=True, elem_classes="setting-controls"):
+                input_ui = create_input_component(config_value)
+                input_ui.scale = 999
+                error_message = gr.Markdown(None)
+                self._SettingsUIConstructor__create_buttons(config_value, create_input_component,
+                                    input_ui, error_message, [])
+
+            error_message = self._SettingsUIConstructor__construct_initial_error_message(config_value)
+
+            # Setup custom event handlers
+            if hasattr(input_ui, "_id"):
+                input_ui.submit(on_weighted_list_change, input_ui, error_message)
+                input_ui.blur(on_weighted_list_change, input_ui, error_message)
+
+            self._SettingsUIConstructor__identifier_to_config_value[config_value.identifier] = config_value
+            self._SettingsUIConstructor__config_value_to_ui_element[config_value] = input_ui
 

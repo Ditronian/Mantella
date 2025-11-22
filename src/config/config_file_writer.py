@@ -11,6 +11,7 @@ from src.config.types.config_value_int import ConfigValueInt
 from src.config.types.config_value_path import ConfigValuePath
 from src.config.types.config_value_selection import ConfigValueSelection
 from src.config.types.config_value_string import ConfigValueString
+from src.config.types.config_value_weighted_string_list import ConfigValueWeightedStringList
 from src.config.types.config_value_visitor import ConfigValueVisitor
 
 
@@ -80,6 +81,27 @@ class ConfigFileWriter(ConfigValueVisitor):
                 required_target_text = f"Target folder must contain folder '{config_value.File_or_folder_that_must_be_present}'!"
         lines_to_write.append(f";   Must be a valid system path. {required_target_text}{self.NEWLINE}")
         lines_to_write.extend(self.__generate_default_and_config_value_lines(config_value))
+        self.write_setting_block_to_file(lines_to_write)
+
+    def visit_ConfigValueWeightedStringList(self, config_value: ConfigValueWeightedStringList):
+        lines_to_write = self.__generate_name_and_description_lines(config_value)
+        lines_to_write.append(f";   Must be a valid JSON array of objects with 'text' and 'weight' fields{self.NEWLINE}")
+        lines_to_write.append(f";   Example: [{{'text': 'First option', 'weight': 2.0}}, {{'text': 'Second option', 'weight': 1.0}}]{self.NEWLINE}")
+
+        # Generate default value as JSON
+        default_json = config_value.default_value_to_json()
+        default_value_lines = ConfigFileWriter.parse_multi_line_string(default_json, ";   ")
+        if len(default_value_lines) > 0:
+            default_value_lines[0] = default_value_lines[0].replace(";   ", ";   default = ")
+        lines_to_write.extend(default_value_lines)
+
+        # Generate current value as JSON
+        current_json = config_value.to_json_string()
+        value_lines = ConfigFileWriter.parse_multi_line_string(current_json, "    ")
+        if len(value_lines) > 0:
+            value_lines[0] = value_lines[0].replace("    ", f"{config_value.identifier} = ")
+        lines_to_write.extend(value_lines)
+
         self.write_setting_block_to_file(lines_to_write)
 
     def __generate_name_and_description_lines(self, config_value: ConfigValue) -> list[str]:
