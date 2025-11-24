@@ -123,17 +123,19 @@ class radiant(conversation_type):
     @utils.time_it
     def get_user_message(self, context_for_conversation: context, messages: message_thread) -> user_message | None:
         text = ""
+        is_system_generated = True
         if len(messages) == 1:
             text = self.__user_start_prompt
             # Check for custom radiant topic
             radiant_topic = context_for_conversation.get_custom_context_value("radiant_topic")
             if radiant_topic:
                 text = f"Begin the conversation focused on the following topic. Stay on this subject unless it naturally concludes: {radiant_topic}\n\n{text}"
+                is_system_generated = False  # Save to history so summarizer sees the topic
         elif len(messages) == 3:
             text = self.__user_end_prompt
         else:
             return None
-        reply = user_message(context_for_conversation.config, text, "", True)
+        reply = user_message(context_for_conversation.config, text, "", is_system_generated)
         reply.is_multi_npc_message = False # Don't flag these as multi-npc messages. Don't want a 'Player:' in front of the instruction messages
         return reply
     
