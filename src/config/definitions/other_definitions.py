@@ -61,6 +61,12 @@ class OtherDefinitions:
                                             Can be used for immersion or to fill the initial gap between input and reply.
                                             Use the 'Player Voice Model' setting to select the voice model of the TTS for the player character."""
         return ConfigValueBool("voice_player_input","Voice Player Input",voice_player_input_description,False,tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
+
+    @staticmethod
+    def get_player_name_override() -> ConfigValue:
+        description = """Override the player character name sent from the mod.
+                        If set, Mantella will use this value instead of the in-game name provided by the mod."""
+        return ConfigValueString("player_name_override","Player Name Override",description,"",tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
     
     @staticmethod
     def get_player_voice_model() -> ConfigValue:

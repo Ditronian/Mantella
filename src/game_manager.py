@@ -255,6 +255,7 @@ class GameStateManager:
                 custom_values = json[comm_consts.KEY_ACTOR_CUSTOMVALUES]
                 if not custom_values:
                     custom_values: dict[str, Any] = {}
+
             equipment = Equipment({})
             if json.__contains__(comm_consts.KEY_ACTOR_EQUIPMENT):
                 equipment = Equipment(self.__convert_to_equipment_item_dictionary(json[comm_consts.KEY_ACTOR_EQUIPMENT]))
@@ -265,6 +266,10 @@ class GameStateManager:
             advanced_voice_model: str = ""
             voice_accent: str = ""
             is_player_character: bool = bool(json[comm_consts.KEY_ACTOR_ISPLAYER])
+            if is_player_character and hasattr(self.__config, "player_name_override"):
+                override_name = str(self.__config.player_name_override).strip()
+                if override_name:
+                    character_name = override_name
             if self.__talk and self.__talk.contains_character(ref_id):
                 already_loaded_character: Character | None = self.__talk.get_character(ref_id)
                 if already_loaded_character:

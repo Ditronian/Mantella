@@ -293,6 +293,7 @@ LLM parameter list must follow the Python dictionary format: https://www.w3schoo
             self.events_refresh_time = self.__definitions.get_int_value("events_refresh_time")
             self.hourly_time = self.__definitions.get_bool_value("hourly_time")
             self.player_character_description: str = self.__definitions.get_string_value("player_character_description")
+            self.player_name_override: str = self.__definitions.get_string_value("player_name_override")
             self.voice_player_input: bool = self.__definitions.get_bool_value("voice_player_input")
             self.player_voice_model: str = self.__definitions.get_string_value("player_voice_model")
 
