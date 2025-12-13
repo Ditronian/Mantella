@@ -56,6 +56,15 @@ class GameStateManager:
         if input_json.__contains__(comm_consts.KEY_STARTCONVERSATION_WORLDID):
             world_id = input_json[comm_consts.KEY_STARTCONVERSATION_WORLDID]
             world_id = self.WORLD_ID_CLEANSE_REGEX.sub("", world_id)
+        # If a player name override is set, force the world_id to use it so saves/summaries land under the override name
+        if hasattr(self.__config, "player_name_override"):
+            override_name = str(self.__config.player_name_override).strip()
+            if override_name:
+                suffix = "1"
+                m = regex.search(r"(\d+)$", world_id)
+                if m:
+                    suffix = m.group(1)
+                world_id = self.WORLD_ID_CLEANSE_REGEX.sub("", f"{override_name}{suffix}")
         if input_json.__contains__(comm_consts.KEY_INPUTTYPE):
             if input_json[comm_consts.KEY_INPUTTYPE] in (comm_consts.KEY_INPUTTYPE_MIC, comm_consts.KEY_INPUTTYPE_PTT):
                 self.__mic_input = True
