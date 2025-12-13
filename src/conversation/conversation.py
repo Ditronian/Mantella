@@ -115,10 +115,22 @@ class conversation:
             tuple[str, sentence | None]: Returns a tuple consisting of a reply type and an optional sentence
         """
         if self.has_already_ended:
-            return comm_consts.KEY_REPLYTYPE_ENDCONVERSATION, None        
+            return comm_consts.KEY_REPLYTYPE_ENDCONVERSATION, None
         if self.__llm_client.is_too_long(self.__messages, self.TOKEN_LIMIT_PERCENT):
             # Check if conversation too long and if yes initiate intermittent reload
             self.__initiate_reload_conversation()
+
+        # Check for radiant direction before other processing
+        radiant_direction = self.__should_direct_radiant_npc()
+        if radiant_direction:
+            logging.info(f"Radiant direction detected: {radiant_direction}")
+            with self.__generation_start_lock:
+                self.__stop_generation()
+                self.__sentences.clear()
+                self.__add_radiant_direction(radiant_direction)
+                self.__context.clear_custom_context_value("radiant_direction")
+            self.__start_generating_npc_sentences()
+            return comm_consts.KEY_REPLYTYPE_NPCTALK, None
 
         # interrupt response if player has spoken
         if self.__stt and self.__stt.has_player_spoken:
@@ -660,6 +672,45 @@ class conversation:
         self.__messages.add_message(direct_directive)
 
         logging.info(f"Added director's instruction: {instruction}")
+        return True
+
+    def __should_direct_radiant_npc(self) -> str | None:
+        """Checks if radiant direction was provided via custom context
+
+        Returns:
+            str | None: the direction text, or None if not a radiant conversation or no direction
+        """
+        if not isinstance(self.__conversation_type, radiant):
+            return None
+
+        direction = self.__context.get_custom_context_value("radiant_direction")
+        if direction and isinstance(direction, str) and direction.strip():
+            return direction.strip()
+
+        return None
+
+    def __add_radiant_direction(self, direction: str) -> bool:
+        """Adds a director's instruction for radiant conversation
+
+        Args:
+            direction (str): the direction for NPCs
+
+        Returns:
+            bool: True if successful
+        """
+        # Frame as out-of-character direction
+        directive_text = f"<<<RADIANT DIRECTION: {direction}>>>"
+
+        radiant_directive = user_message(
+            self.__context.config,
+            directive_text,
+            "",  # No speaker name for radiant directions
+            is_system_generated_message=False  # Keep in history for context
+        )
+        radiant_directive.is_multi_npc_message = False
+        self.__messages.add_message(radiant_directive)
+
+        logging.info(f"Added radiant direction: {direction}")
         return True
 
     def __load_last_conversation(self, character: Character) -> list[ChatCompletionMessageParam]:

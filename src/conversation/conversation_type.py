@@ -110,6 +110,8 @@ class radiant(conversation_type):
         super().__init__(config)
         self.__user_start_prompt = config.radiant_start_prompt
         self.__user_end_prompt = config.radiant_end_prompt
+        self.__message_limit = 4  # Base limit
+        self.__extension_amount = 8  # Extend by 8 messages per direction
 
     @utils.time_it
     def generate_prompt(self, context_for_conversation: context) -> str:
@@ -140,4 +142,16 @@ class radiant(conversation_type):
         return reply
     
     def should_end(self, context_for_conversation: context, messages: message_thread) -> bool:
-        return len(messages) > 4
+        # Check if new direction was added in recent messages
+        # Only check last 2 messages to avoid double-counting
+        from ..llm.messages import user_message
+        last_messages = messages.get_last_n_messages(2)
+        for msg in last_messages:
+            if isinstance(msg, user_message):
+                content = msg.get_formatted_content()
+                if content and "<<<RADIANT DIRECTION:" in content:
+                    self.__message_limit += self.__extension_amount
+                    logging.info(f"Radiant direction received - extending conversation limit to {self.__message_limit} messages")
+                    break
+
+        return len(messages) > self.__message_limit

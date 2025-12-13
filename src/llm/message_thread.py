@@ -114,6 +114,18 @@ class message_thread():
         return self.__messages[len(self.__messages) -1]
 
     @utils.time_it
+    def get_last_n_messages(self, n: int) -> list[message]:
+        """Get the last N messages from the thread
+
+        Args:
+            n (int): number of messages to retrieve
+
+        Returns:
+            list[message]: the last N messages
+        """
+        return self.__messages[-n:] if len(self.__messages) >= n else self.__messages
+
+    @utils.time_it
     def get_last_assistant_message(self) -> assistant_message | None:
         for message in reversed(self.__messages):
             if isinstance(message, assistant_message):

@@ -116,6 +116,16 @@ class context:
         return None
 
     @utils.time_it
+    def clear_custom_context_value(self, key: str):
+        """Clears a custom context value
+
+        Args:
+            key (str): the key to clear
+        """
+        if self.__custom_context_values.__contains__(key):
+            del self.__custom_context_values[key]
+
+    @utils.time_it
     def get_context_ingame_events(self) -> list[str]:
         return self.__ingame_events
     
