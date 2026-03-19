@@ -75,6 +75,11 @@ class ClientBase(AIClient):
         """Returns the max_tokens value from request params, or defaults to 250"""
         return self._request_params.get("max_tokens", 250) if self._request_params else 250
 
+    def _is_anthropic_model(self) -> bool:
+        """Check if the current model is an Anthropic Claude model"""
+        model_lower = self._model_name.lower()
+        return 'claude' in model_lower or 'anthropic' in model_lower
+
 
     @utils.time_it
     def generate_async_client(self) -> AsyncOpenAI:
@@ -117,9 +122,11 @@ class ClientBase(AIClient):
                 openai_messages = messages.get_openai_messages()
             
             if self._request_params:
-                request_params = self._request_params
+                request_params = self._request_params.copy()
             else:
                 request_params: dict[str, Any] = {}
+            if self._is_anthropic_model():
+                request_params["cache_control"] = {"type": "ephemeral"}
             try:
                 chat_completion = sync_client.chat.completions.create(
                     model=self.model_name,
@@ -157,6 +164,8 @@ class ClientBase(AIClient):
                 request_params: dict[str, Any] = {}
             if is_multi_npc: # override max_tokens to be at least 250 in radiant / multi-NPC conversations
                 request_params["max_tokens"] = max(self.max_tokens_param, 250)
+            if self._is_anthropic_model():
+                request_params["cache_control"] = {"type": "ephemeral"}
             try:
                 # Prepare the messages including the image if provided
                 vision_hints = ''

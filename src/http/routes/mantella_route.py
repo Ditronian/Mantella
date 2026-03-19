@@ -66,26 +66,21 @@ class mantella_route(routeable):
     def add_route_to_server(self, app: FastAPI):
         @app.post("/mantella")
         async def mantella(request: Request):
-            logging.debug('Received request')
             if not self._can_route_be_used():
                 error_message = "MantellaSoftware settings faulty. Please check MantellaSoftware's window or log."
-                logging.error(error_message)
                 return self.error_message(error_message)
             if not self.__game:
                 error_message = "Game manager setup failed. There is most likely an issue with the config.ini."
-                logging.error(error_message)
                 return self.error_message(error_message)
             reply = {}
             received_json: dict[str, Any] | None = await request.json()
             if received_json:
-                logging.debug('Processing request...')
                 if self._show_debug_messages:
                     logging.log(self._log_level_http_in, json.dumps(received_json, indent=4))
-                request_type: str = received_json[comm_consts.KEY_REQUESTTYPE]
+                request_type: str = received_json.get(comm_consts.KEY_REQUESTTYPE, 'UNKNOWN')
                 match request_type:
                     case comm_consts.KEY_REQUESTTYPE_INIT:
                         # nothing needs to be done for this request aside from self._can_route_be_used() being triggered
-                        logging.debug('Mantella settings initialized')
                         reply = {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTTYPE_INITCOMPLETED}
                     case comm_consts.KEY_REQUESTTYPE_STARTCONVERSATION:
                         reply = self.__game.start_conversation(received_json)
