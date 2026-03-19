@@ -126,7 +126,7 @@ class ClientBase(AIClient):
             else:
                 request_params: dict[str, Any] = {}
             if self._is_anthropic_model():
-                request_params["cache_control"] = {"type": "ephemeral"}
+                request_params["extra_body"] = {"cache_control": {"type": "ephemeral"}}
             try:
                 chat_completion = sync_client.chat.completions.create(
                     model=self.model_name,
@@ -165,7 +165,7 @@ class ClientBase(AIClient):
             if is_multi_npc: # override max_tokens to be at least 250 in radiant / multi-NPC conversations
                 request_params["max_tokens"] = max(self.max_tokens_param, 250)
             if self._is_anthropic_model():
-                request_params["cache_control"] = {"type": "ephemeral"}
+                request_params["extra_body"] = {"cache_control": {"type": "ephemeral"}}
             try:
                 # Prepare the messages including the image if provided
                 vision_hints = ''
