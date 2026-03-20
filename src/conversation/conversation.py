@@ -102,6 +102,14 @@ class conversation:
         Returns:
             tuple[str, sentence | None]: Returns a tuple consisting of a reply type and an optional sentence
         """
+        # Check radiant topic for NSFW keyword before generating greeting
+        if isinstance(self.__conversation_type, radiant):
+            radiant_topic = self.__context.get_custom_context_value("radiant_topic")
+            if radiant_topic and isinstance(radiant_topic, str) and radiant_topic.strip():
+                cleaned_topic = self.__check_and_strip_nsfw_from_direction(radiant_topic)
+                if cleaned_topic != radiant_topic:
+                    self.__context.set_custom_context_value("radiant_topic", cleaned_topic)
+
         greeting: user_message | None = self.__conversation_type.get_user_message(self.__context, self.__messages)
         if greeting:
             self.__messages.add_message(greeting)
@@ -126,6 +134,7 @@ class conversation:
         # Check for radiant direction before other processing
         radiant_direction = self.__should_direct_radiant_npc()
         if radiant_direction:
+            radiant_direction = self.__check_and_strip_nsfw_from_direction(radiant_direction)
             logging.info(f"Radiant direction detected: {radiant_direction}")
             with self.__generation_start_lock:
                 self.__stop_generation()
@@ -735,6 +744,27 @@ class conversation:
             return direction.strip()
 
         return None
+
+    def __check_and_strip_nsfw_from_direction(self, direction: str) -> str:
+        """Checks if direction text contains the NSFW keyword, enables NSFW mode if found, and returns cleaned text
+
+        Args:
+            direction (str): the direction text to check
+
+        Returns:
+            str: the direction text with the NSFW keyword removed (if found), or unchanged
+        """
+        import re
+        nsfw_keyword = self.__context.config.nsfw_keyword.strip()
+        if not nsfw_keyword:
+            return direction
+        pattern = rf"\b{re.escape(nsfw_keyword)}\b"
+        if re.search(pattern, direction, re.IGNORECASE):
+            cleaned = re.sub(pattern, "", direction, flags=re.IGNORECASE).strip()
+            cleaned = re.sub(r"\s{2,}", " ", cleaned)
+            self.__toggle_nsfw_mode(True)
+            return cleaned
+        return direction
 
     def __add_radiant_direction(self, direction: str) -> bool:
         """Adds a director's instruction for radiant conversation

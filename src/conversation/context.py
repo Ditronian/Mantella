@@ -115,6 +115,9 @@ class context:
             return self.__custom_context_values[key]
         return None
 
+    def set_custom_context_value(self, key: str, value: Any):
+        self.__custom_context_values[key] = value
+
     @utils.time_it
     def clear_custom_context_value(self, key: str):
         """Clears a custom context value
