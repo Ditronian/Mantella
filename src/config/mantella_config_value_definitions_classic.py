@@ -116,6 +116,7 @@ class MantellaConfigValueDefinitionsClassic:
         speech_advanced_category.add_config_value(TTSDefinitions.get_xtts_lowvram_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_xtts_data_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_xtts_accent_config_value())
+        speech_advanced_category.add_config_value(TTSDefinitions.get_tts_max_chunk_length_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_tts_process_device_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_pace_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_use_cleanup_config_value())

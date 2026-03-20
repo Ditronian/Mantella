@@ -122,7 +122,14 @@ If you have trouble installing the xVASynth version from Nexus, try installing i
         description = """Note that this setting is only available for Skyrim.
         Changes the 'accent' of NPCs by sending the language value from data/Skyrim/skyrim_characters.csv's lang_override column to XTTS.\nThis helps give NPC's unique-sounding voices, even when they use the same base voice model."""
         return ConfigValueBool("xtts_accent", "XTTS Accent", description, False, tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
-    
+
+    @staticmethod
+    def get_tts_max_chunk_length_config_value() -> ConfigValue:
+        description = """Maximum character length for a single TTS synthesis request.
+                        Longer voicelines are automatically split into chunks and merged.
+                        Reduce this value if TTS fails on long sentences. Set to 0 to disable chunking."""
+        return ConfigValueInt("tts_max_chunk_length", "TTS Max Chunk Length", description, 250, 0, 999999, tags=[ConfigValueTag.advanced])
+
     # xVASynth section
     @staticmethod
     def get_tts_process_device_config_value() -> ConfigValue:

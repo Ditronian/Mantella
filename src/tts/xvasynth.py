@@ -3,7 +3,6 @@ from src.tts.ttsable import ttsable
 import logging
 import src.utils as utils
 import os
-import re
 import numpy as np
 import soundfile as sf
 import json
@@ -139,70 +138,6 @@ class xvasynth(ttsable):
                 logging.error(f'model {voice} failed to load. Try restarting Mantella')
                 input('\nPress any key to stop Mantella...')
                 sys.exit(0)
-    
-
-    @utils.time_it
-    def _split_voiceline(self, voiceline, max_length=150):
-        """Split voiceline into phrases by commas, 'and', and 'or'"""
-        def group_sentences(voiceline_sentences, max_length=150):
-            """
-            Splits sentences into separate voicelines based on their length (max=max_length)
-            Groups sentences if they can be done so without exceeding max_length
-            """
-            grouped_sentences = []
-            temp_group = []
-            for sentence in voiceline_sentences:
-                if len(sentence) > max_length:
-                    grouped_sentences.append(sentence)
-                elif len(' '.join(temp_group + [sentence])) <= max_length:
-                    temp_group.append(sentence)
-                else:
-                    grouped_sentences.append(' '.join(temp_group))
-                    temp_group = [sentence]
-            if temp_group:
-                grouped_sentences.append(' '.join(temp_group))
-
-            return grouped_sentences
-
-        # Split by commas and "and" or "or"
-        chunks = re.split(r'(, | and | or )', voiceline)
-        # Join the delimiters back to their respective chunks
-        chunks = [chunks[i] + (chunks[i+1] if i+1 < len(chunks) else '') for i in range(0, len(chunks), 2)]
-        # Filter out empty chunks
-        chunks = [chunk for chunk in chunks if chunk.strip()]
-
-        result = []
-        for chunk in chunks:
-            if len(chunk) <= max_length:
-                if result and result[-1].endswith(' and'):
-                    result[-1] = result[-1][:-4]
-                    chunk = 'and ' + chunk.strip()
-                elif result and result[-1].endswith(' or'):
-                    result[-1] = result[-1][:-3]
-                    chunk = 'or ' + chunk.strip()
-                result.append(chunk.strip())
-            else:
-                # Split long chunks based on length
-                words = chunk.split()
-                current_line = words[0]
-                for word in words[1:]:
-                    if len(current_line + ' ' + word) <= max_length:
-                        current_line += ' ' + word
-                    else:
-                        if current_line.endswith(' and'):
-                            current_line = current_line[:-4]
-                            word = 'and ' + word
-                        if current_line.endswith(' or'):
-                            current_line = current_line[:-3]
-                            word = 'or ' + word
-                        result.append(current_line.strip())
-                        current_line = word
-                result.append(current_line.strip())
-
-        result = group_sentences(result, max_length)
-        logging.debug(f'Split sentence into : {result}')
-
-        return result
     
 
     @utils.time_it

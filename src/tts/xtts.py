@@ -30,6 +30,7 @@ class xtts(ttsable):
         self.__xtts_data = config.xtts_data
         self.__xtts_server_path = config.xtts_server_path
         self.__xtts_accent = config.xtts_accent
+        self.__tts_max_chunk_length = config.tts_max_chunk_length
         self._language = self._language if self._language != 'zh' else 'zh-cn'
         self.__voice_accent = self._language
         self.__official_model_list = ["main","v2.0.3","v2.0.2","v2.0.1","v2.0.0"]
@@ -178,21 +179,51 @@ class xtts(ttsable):
 
     @utils.time_it
     def _synthesize_line_xtts(self, line, save_path):
-        def get_voiceline(voice_name):
+        def get_voiceline(text, voice_name):
             voice_path = f"{self._sanitize_voice_name(voice_name)}"
             data = {
-                'text': line,
+                'text': text,
                 'speaker_wav': voice_path,
                 'language': self._language,
                 'accent': self.__voice_accent,
             }
             return requests.post(self.__xtts_synthesize_url, json=data)
 
-        response = get_voiceline(self._last_voice.lower())
-        if response and response.status_code == 200:
-            self._convert_to_16bit(io.BytesIO(response.content), save_path)
-        elif response:
-            logging.error(f"Failed with '{self._last_voice}'. HTTP Error: {response.status_code}")
+        if self.__tts_max_chunk_length > 0 and len(line) > self.__tts_max_chunk_length:
+            phrases = self._split_voiceline(line, max_length=self.__tts_max_chunk_length)
+        else:
+            phrases = [line]
+
+        if len(phrases) == 1:
+            response = get_voiceline(phrases[0], self._last_voice.lower())
+            if response and response.status_code == 200:
+                self._convert_to_16bit(io.BytesIO(response.content), save_path)
+            elif response:
+                logging.error(f"Failed with '{self._last_voice}'. HTTP Error: {response.status_code}")
+        else:
+            audio_chunks = []
+            for phrase in phrases:
+                response = get_voiceline(phrase, self._last_voice.lower())
+                if response and response.status_code == 200:
+                    audio_chunks.append(io.BytesIO(response.content))
+                elif response:
+                    logging.warning(f"Chunk failed with '{self._last_voice}'. HTTP Error: {response.status_code}. Skipping chunk: {phrase[:50]}...")
+            if audio_chunks:
+                self._merge_audio_chunks(audio_chunks, save_path)
+
+    @utils.time_it
+    def _merge_audio_chunks(self, audio_chunks: list[io.BytesIO], save_path: str):
+        merged_audio = np.array([])
+        target_samplerate = None
+        for chunk_bytes in audio_chunks:
+            data, samplerate = sf.read(chunk_bytes)
+            if target_samplerate is None:
+                target_samplerate = samplerate
+            merged_audio = np.concatenate((merged_audio, data))
+        if target_samplerate and len(merged_audio) > 0:
+            if np.issubdtype(merged_audio.dtype, np.floating):
+                merged_audio = np.int16(merged_audio * 32767)
+            sf.write(save_path, merged_audio, target_samplerate, subtype='PCM_16')
 
 
     @utils.time_it

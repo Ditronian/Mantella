@@ -212,6 +212,7 @@ class ConfigLoader:
             self.number_words_tts = self.__definitions.get_int_value("number_words_tts")
             self.xtts_data = self.__definitions.get_string_value("xtts_data")
             self.xtts_accent = self.__definitions.get_bool_value("xtts_accent")
+            self.tts_max_chunk_length = self.__definitions.get_int_value("tts_max_chunk_length")
 
             self.tts_print = self.__definitions.get_bool_value("tts_print")
         

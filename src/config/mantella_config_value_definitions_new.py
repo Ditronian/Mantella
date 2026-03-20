@@ -75,6 +75,7 @@ class MantellaConfigValueDefinitionsNew:
         tts_category.add_config_value(TTSDefinitions.get_xtts_lowvram_config_value())
         tts_category.add_config_value(TTSDefinitions.get_xtts_data_config_value())
         tts_category.add_config_value(TTSDefinitions.get_xtts_accent_config_value())
+        tts_category.add_config_value(TTSDefinitions.get_tts_max_chunk_length_config_value())
         tts_category.add_config_value(TTSDefinitions.get_tts_print_config_value())
         tts_category.add_config_value(TTSDefinitions.get_tts_process_device_config_value())
         tts_category.add_config_value(TTSDefinitions.get_pace_config_value())
