@@ -15,11 +15,12 @@ class conversation_type(ABC):
         self._config = config
     
     @abstractmethod
-    def generate_prompt(self, context_for_conversation: context) -> str:
-        """Generates the text for the initial system_message. 
+    def generate_prompt(self, context_for_conversation: context, nsfw: bool = False) -> str:
+        """Generates the text for the initial system_message.
 
         Args:
             context_for_conversation (context): The context for the conversations. Provides tools to construct the prompt
+            nsfw (bool): If True, use the NSFW prompt variant instead of the normal one
 
         Returns:
             str: the prompt as a text
@@ -68,9 +69,10 @@ class pc_to_npc(conversation_type):
         super().__init__(config)
 
     @utils.time_it
-    def generate_prompt(self, context_for_conversation: context) -> str:
+    def generate_prompt(self, context_for_conversation: context, nsfw: bool = False) -> str:
         actions = [a for a in self._config.actions if a.use_in_on_on_one]
-        return context_for_conversation.generate_system_message(self._config.prompt, actions)
+        prompt = self._config.nsfw_prompt if nsfw else self._config.prompt
+        return context_for_conversation.generate_system_message(prompt, actions)
     
     @utils.time_it
     def adjust_existing_message_thread(self, prompt: str, message_thread_to_adjust: message_thread):
@@ -96,9 +98,10 @@ class multi_npc(conversation_type):
         super().__init__(config)
 
     @utils.time_it
-    def generate_prompt(self, context_for_conversation: context) -> str:
+    def generate_prompt(self, context_for_conversation: context, nsfw: bool = False) -> str:
         actions = [a for a in self._config.actions if a.use_in_multi_npc]
-        return context_for_conversation.generate_system_message(self._config.multi_npc_prompt, actions)
+        prompt = self._config.nsfw_multi_npc_prompt if nsfw else self._config.multi_npc_prompt
+        return context_for_conversation.generate_system_message(prompt, actions)
     
     @utils.time_it
     def adjust_existing_message_thread(self, prompt: str, message_thread_to_adjust: message_thread):
@@ -114,9 +117,10 @@ class radiant(conversation_type):
         self.__extension_amount = 8  # Extend by 8 messages per direction
 
     @utils.time_it
-    def generate_prompt(self, context_for_conversation: context) -> str:
+    def generate_prompt(self, context_for_conversation: context, nsfw: bool = False) -> str:
         actions = [a for a in self._config.actions if a.use_in_radiant]
-        return context_for_conversation.generate_system_message(self._config.radiant_prompt, actions)
+        prompt = self._config.nsfw_radiant_prompt if nsfw else self._config.radiant_prompt
+        return context_for_conversation.generate_system_message(prompt, actions)
     
     @utils.time_it
     def adjust_existing_message_thread(self, prompt: str, message_thread_to_adjust: message_thread):

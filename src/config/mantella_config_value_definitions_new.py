@@ -54,6 +54,7 @@ class MantellaConfigValueDefinitionsNew:
         llm_category.add_config_value(LLMDefinitions.get_speech_start_indicators())
         llm_category.add_config_value(LLMDefinitions.get_speech_end_indicators())
         llm_category.add_config_value(LLMDefinitions.get_narration_indicators())
+        llm_category.add_config_value(LLMDefinitions.get_nsfw_model_config_value())
         result.add_base_group(llm_category)
 
         tts_category = ConfigValueGroup("TTS", "Text-to-Speech", "Settings for the TTS methods Mantella supports.", on_value_change_callback)
@@ -122,6 +123,7 @@ class MantellaConfigValueDefinitionsNew:
         language_category.add_config_value(LanguageDefinitions.get_resume_conversation_keyword_config_value())
         language_category.add_config_value(LanguageDefinitions.get_redo_conversation_keyword_config_value())
         language_category.add_config_value(LanguageDefinitions.get_direct_conversation_keyword_config_value())
+        language_category.add_config_value(LanguageDefinitions.get_nsfw_keyword_config_value())
         language_category.add_config_value(LanguageDefinitions.get_goodbye_npc_response())
         language_category.add_config_value(LanguageDefinitions.get_collecting_thoughts_npc_response())
         for action in actions:
@@ -135,6 +137,12 @@ class MantellaConfigValueDefinitionsNew:
         prompts_category.add_config_value(PromptDefinitions.get_fallout4_prompt_config_value())
         prompts_category.add_config_value(PromptDefinitions.get_fallout4_multi_npc_prompt_config_value())
         prompts_category.add_config_value(PromptDefinitions.get_fallout4_radiant_prompt_config_value())
+        prompts_category.add_config_value(PromptDefinitions.get_nsfw_skyrim_prompt_config_value())
+        prompts_category.add_config_value(PromptDefinitions.get_nsfw_skyrim_multi_npc_prompt_config_value())
+        prompts_category.add_config_value(PromptDefinitions.get_nsfw_skyrim_radiant_prompt_config_value())
+        prompts_category.add_config_value(PromptDefinitions.get_nsfw_fallout4_prompt_config_value())
+        prompts_category.add_config_value(PromptDefinitions.get_nsfw_fallout4_multi_npc_prompt_config_value())
+        prompts_category.add_config_value(PromptDefinitions.get_nsfw_fallout4_radiant_prompt_config_value())
         prompts_category.add_config_value(PromptDefinitions.get_memory_prompt_config_value())
         prompts_category.add_config_value(PromptDefinitions.get_resummarize_prompt_config_value())
         prompts_category.add_config_value(PromptDefinitions.get_vision_prompt_config_value())

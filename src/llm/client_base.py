@@ -70,6 +70,10 @@ class ClientBase(AIClient):
         """
         return self._api_key
 
+    def swap_model(self, model_name: str):
+        """Swap the model name at runtime (same endpoint/API key)"""
+        self._model_name = model_name
+
     @property
     def max_tokens_param(self) -> int:
         """Returns the max_tokens value from request params, or defaults to 250"""

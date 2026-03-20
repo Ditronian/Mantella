@@ -188,6 +188,11 @@ class message_thread():
         """
         self.__messages = [msg for msg in self.__messages if not isinstance(msg, message_type)]
 
+    def replace_system_message(self, new_prompt: str):
+        """Replaces the system message (first message) with a new prompt"""
+        if len(self.__messages) > 0 and isinstance(self.__messages[0], system_message):
+            self.__messages[0] = system_message(new_prompt, self.__config)
+
     def replace_or_add_message(self, message_instance, message_type: type):
         if self.has_message_type(message_type):
             self.replace_message_type(message_instance,message_type)

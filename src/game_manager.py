@@ -308,6 +308,18 @@ class GameStateManager:
                     tts_voice_model = self.__get_player_voice_model(str(custom_values[comm_consts.KEY_ACTOR_PC_VOICEMODEL]))
                 else:
                     tts_voice_model = self.__get_player_voice_model(None)
+                # Look up voice model in CSV to populate the same fallback fields NPCs get
+                if tts_voice_model:
+                    df = self.__game.character_df
+                    match = df.loc[df['name'].astype(str).str.lower() == tts_voice_model.lower()]
+                    if match.empty:
+                        match = df.loc[df['voice_model'].astype(str).str.lower() == tts_voice_model.lower()]
+                    if not match.empty:
+                        row = match.iloc[0]
+                        voice_folder_col = f"{self.__game.game_name_in_filepath}_voice_folder"
+                        csv_in_game_voice_model = str(row.get(voice_folder_col, '') or '')
+                        advanced_voice_model = str(row.get('advanced_voice_model', '') or '')
+                        voice_accent = str(row.get('voice_accent', '') or '')
 
             return Character(base_id,
                             ref_id,

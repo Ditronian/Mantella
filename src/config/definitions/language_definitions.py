@@ -39,6 +39,13 @@ class LanguageDefinitions:
         return ConfigValueString("direct_conversation_keyword","Direct NPC Keyword",description,"direct")
 
     @staticmethod
+    def get_nsfw_keyword_config_value() -> ConfigValue:
+        description = """The keyword to toggle NSFW mode on or off during a conversation.
+                        Usage: 'nsfw on' or 'nsfw off' (case-insensitive).
+                        Requires an NSFW model to be configured in the LLM settings."""
+        return ConfigValueString("nsfw_keyword", "NSFW Toggle Keyword", description, "nsfw")
+
+    @staticmethod
     def get_goodbye_npc_response() -> ConfigValue:
         return ConfigValueString("goodbye_npc_response","NPC Response: Goodbye","The response the NPC gives at the end of the conversation.","Safe travels",tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
 

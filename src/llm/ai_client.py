@@ -38,6 +38,10 @@ class AIClient(ABC):
         """
         pass
     
+    def swap_model(self, model_name: str):
+        """Swap the model name at runtime. Override in subclasses that support this."""
+        pass
+
     @abstractmethod
     def get_count_tokens(self, messages: message_thread | list[message] | message | str) -> int:
         """Returns the number of tokens used by a list of messages

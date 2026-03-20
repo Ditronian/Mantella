@@ -163,6 +163,7 @@ class ConfigLoader:
             self.resume_conversation_keyword = self.__definitions.get_string_value("resume_conversation_keyword")
             self.redo_conversation_keyword = self.__definitions.get_string_value("redo_conversation_keyword")
             self.direct_conversation_keyword = self.__definitions.get_string_value("direct_conversation_keyword")
+            self.nsfw_keyword = self.__definitions.get_string_value("nsfw_keyword")
             self.goodbye_npc_response = self.__definitions.get_string_value("goodbye_npc_response")
             self.collecting_thoughts_npc_response = self.__definitions.get_string_value("collecting_thoughts_npc_response")
             for a in self.__actions:
@@ -248,6 +249,8 @@ class ConfigLoader:
             self.max_response_sentences = self.__definitions.get_int_value("max_response_sentences")
             self.llm = self.__definitions.get_string_value("model")
             self.llm = self.llm.split(' |')[0] if ' |' in self.llm else self.llm
+            self.nsfw_model = self.__definitions.get_string_value("nsfw_model")
+            self.nsfw_model = self.nsfw_model.split(' |')[0] if ' |' in self.nsfw_model else self.nsfw_model
             self.wait_time_buffer = self.__definitions.get_float_value("wait_time_buffer")
             self.llm_api = self.__definitions.get_string_value("llm_api")
             # self.llm_priority = self.__definitions.get_string_value("llm_priority")
@@ -305,15 +308,21 @@ LLM parameter list must follow the Python dictionary format: https://www.w3schoo
 
             self.save_audio_data_to_character_folder = self.__definitions.get_bool_value("save_audio_data_to_character_folder")
 
-            #new separate prompts for Fallout 4 have been added 
+            #new separate prompts for Fallout 4 have been added
             if self.game == "Fallout4" or self.game == "Fallout4VR":
                 self.prompt = self.__definitions.get_string_value("fallout4_prompt")
                 self.multi_npc_prompt = self.__definitions.get_string_value("fallout4_multi_npc_prompt")
                 self.radiant_prompt = self.__definitions.get_string_value("fallout4_radiant_prompt")
+                self.nsfw_prompt = self.__definitions.get_string_value("nsfw_fallout4_prompt")
+                self.nsfw_multi_npc_prompt = self.__definitions.get_string_value("nsfw_fallout4_multi_npc_prompt")
+                self.nsfw_radiant_prompt = self.__definitions.get_string_value("nsfw_fallout4_radiant_prompt")
             else:
                 self.prompt = self.__definitions.get_string_value("skyrim_prompt")
                 self.multi_npc_prompt = self.__definitions.get_string_value("skyrim_multi_npc_prompt")
                 self.radiant_prompt = self.__definitions.get_string_value("skyrim_radiant_prompt")
+                self.nsfw_prompt = self.__definitions.get_string_value("nsfw_skyrim_prompt")
+                self.nsfw_multi_npc_prompt = self.__definitions.get_string_value("nsfw_skyrim_multi_npc_prompt")
+                self.nsfw_radiant_prompt = self.__definitions.get_string_value("nsfw_skyrim_radiant_prompt")
 
             self.radiant_start_prompt = self.__definitions.get_string_value("radiant_start_prompt")
             self.radiant_end_prompt = self.__definitions.get_string_value("radiant_end_prompt")

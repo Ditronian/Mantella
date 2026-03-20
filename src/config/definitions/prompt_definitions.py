@@ -181,6 +181,104 @@ class PromptDefinitions:
         return ConfigValueString("fallout4_radiant_prompt","Fallout 4 Radiant Conversation Prompt",PromptDefinitions.BASE_RADIANT_DESCRIPTION,fallout4_radiant_prompt,[PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES_RADIANT)])
     
     @staticmethod
+    def get_nsfw_skyrim_prompt_config_value() -> ConfigValue:
+        nsfw_prompt = """You are {name}, and you live in Skyrim. This is your background: {bio}
+                                Sometimes in-game events will be passed before the player response within brackets. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
+                                (The player picked up a pair of gloves)
+                                Who do you think these belong to?
+                                You are having a conversation with {player_name} (the player) who is {trust} in {location}. {player_name} {player_description} {player_equipment} {equipment}
+                                The time is {time} {time_group}.
+                                {weather}
+                                Remember to stay in character.
+                                {actions}
+                                The conversation takes place in {language}.
+                                {conversation_summary}"""
+        description = """The NSFW prompt used when NSFW mode is toggled on (Skyrim, single NPC).
+                        Supports the same dynamic variables as the normal Skyrim prompt.
+                        Customize this to allow narration, explicit content, or other NSFW behaviors."""
+        return ConfigValueString("nsfw_skyrim_prompt", "NSFW Skyrim Prompt", description, nsfw_prompt, [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES)])
+
+    @staticmethod
+    def get_nsfw_skyrim_multi_npc_prompt_config_value() -> ConfigValue:
+        nsfw_multi_prompt = """The following is a conversation in {location} in Skyrim between {names_w_player}. {player_name} {player_description} {player_equipment}
+                                    Here are their backgrounds:
+                                    {bios}
+                                    {equipment}
+                                    And here are their conversation histories:
+                                    {conversation_summaries}
+                                    The time is {time} {time_group}.
+                                    {weather}
+                                    You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
+                                    Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                                    {actions}
+                                    Remember, you can only respond as {names}. Ensure to use their full name when responding.
+                                    The conversation takes place in {language}."""
+        description = """The NSFW prompt used when NSFW mode is toggled on (Skyrim, multi-NPC).
+                        Supports the same dynamic variables as the normal Skyrim multi-NPC prompt."""
+        return ConfigValueString("nsfw_skyrim_multi_npc_prompt", "NSFW Skyrim Multi-NPC Prompt", description, nsfw_multi_prompt, [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES)])
+
+    @staticmethod
+    def get_nsfw_skyrim_radiant_prompt_config_value() -> ConfigValue:
+        nsfw_radiant_prompt = """The following is a conversation in {location} in Skyrim between {names}.
+                                    Here are their backgrounds:
+                                    {bios}
+                                    {conversation_summaries}
+                                    The time is {time} {time_group}.
+                                    {weather}
+                                    You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
+                                    Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                                    {actions}
+                                    Remember, you can only respond as {names}. Ensure to use their full name when responding.
+                                    The conversation takes place in {language}."""
+        description = """The NSFW prompt used when NSFW mode is toggled on (Skyrim, radiant).
+                        Supports the same dynamic variables as the normal Skyrim radiant prompt."""
+        return ConfigValueString("nsfw_skyrim_radiant_prompt", "NSFW Skyrim Radiant Prompt", description, nsfw_radiant_prompt, [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES_RADIANT)])
+
+    @staticmethod
+    def get_nsfw_fallout4_prompt_config_value() -> ConfigValue:
+        nsfw_prompt = """You are {name}, and you live in the post-apocalyptic Commonwealth of Fallout. This is your background: {bio}
+                            Sometimes in-game events will be passed before the player response within. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
+                            (The player picked up a pair of gloves)
+                            Who do you think these belong to?
+                            You are having a conversation with {trust} (the player) in {location}.
+                            {actions}
+                            The time is {time} {time_group}.
+                            The conversation takes place in {language}.
+                            {conversation_summary}"""
+        description = """The NSFW prompt used when NSFW mode is toggled on (Fallout 4, single NPC).
+                        Supports the same dynamic variables as the normal Fallout 4 prompt."""
+        return ConfigValueString("nsfw_fallout4_prompt", "NSFW Fallout 4 Prompt", description, nsfw_prompt, [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES)])
+
+    @staticmethod
+    def get_nsfw_fallout4_multi_npc_prompt_config_value() -> ConfigValue:
+        nsfw_multi_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names_w_player}. Here are their backgrounds:
+                            {bios}
+                            And here are their conversation histories: {conversation_summaries}
+                            The time is {time} {time_group}.
+                            You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
+                            Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                            {actions}
+                            Remember, you can only respond as {names}. Ensure to use their full name when responding.
+                            The conversation takes place in {language}."""
+        description = """The NSFW prompt used when NSFW mode is toggled on (Fallout 4, multi-NPC).
+                        Supports the same dynamic variables as the normal Fallout 4 multi-NPC prompt."""
+        return ConfigValueString("nsfw_fallout4_multi_npc_prompt", "NSFW Fallout 4 Multi-NPC Prompt", description, nsfw_multi_prompt, [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES)])
+
+    @staticmethod
+    def get_nsfw_fallout4_radiant_prompt_config_value() -> ConfigValue:
+        nsfw_radiant_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names}. Here are their backgrounds: {bios}
+                            And here are their conversation histories: {conversation_summaries}
+                            The time is {time} {time_group}.
+                            You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
+                            Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                            {actions}
+                            Remember, you can only respond as {names}. Ensure to use their full name when responding.
+                            The conversation takes place in {language}."""
+        description = """The NSFW prompt used when NSFW mode is toggled on (Fallout 4, radiant).
+                        Supports the same dynamic variables as the normal Fallout 4 radiant prompt."""
+        return ConfigValueString("nsfw_fallout4_radiant_prompt", "NSFW Fallout 4 Radiant Prompt", description, nsfw_radiant_prompt, [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES_RADIANT)])
+
+    @staticmethod
     def get_memory_prompt_config_value() -> ConfigValue:
         memory_prompt_description = """The prompt used to summarize a conversation and save to the NPC's memories in data/game/conversations/NPC_Name/NPC_Name_summary_X.txt.
                                          	If you would like to edit this, please ensure that the below dynamic variables are contained in curly brackets {}:

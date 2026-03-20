@@ -122,6 +122,13 @@ class LLMDefinitions:
         return ConfigValueMultiSelection("speech_end_indicators","Speech end indicators",description,possible_characters, possible_characters, tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
     
     @staticmethod
+    def get_nsfw_model_config_value() -> ConfigValue:
+        description = """The model to use when NSFW mode is toggled on via the chat command.
+                        Leave empty to disable the NSFW toggle feature entirely.
+                        This model must be available on the same LLM service/endpoint as your normal model."""
+        return ConfigValueString("nsfw_model", "NSFW Model", description, "", tags=[ConfigValueTag.advanced])
+
+    @staticmethod
     def get_narration_indicators() -> ConfigValue:
         description = """Which narration indicators to use for sentences identified as narrations.
                         If sentences get marked as narrations and are not cut, they will be surrounded by these narration indicators the next time they are fed back to the LLM.

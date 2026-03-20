@@ -55,6 +55,9 @@ class conversation:
         self.__generation_thread: Thread | None = None
         self.__generation_start_lock: Lock = Lock()
         # self.__actions: list[action] = actions
+        self.__nsfw_enabled: bool = False
+        self.__normal_model: str = context_for_conversation.config.llm
+        self.__nsfw_model: str = context_for_conversation.config.nsfw_model
         self.last_sentence_audio_length = 0
         self.last_sentence_start_time = time.time()
         self.__end_conversation_keywords = utils.parse_keywords(context_for_conversation.config.end_conversation_keyword)
@@ -231,10 +234,11 @@ class conversation:
             is_resume = self.__should_resume_conversation(text)
             redo_guidance = self.__should_redo_response(text)
             direct_instruction = self.__should_direct_npc(text)
+            nsfw_toggle = self.__should_toggle_nsfw(text)
 
             # Only generate player voiceline if this isn't a special command
             # Note: redo_guidance can be None (not a redo), "" (redo without guidance), or a string (redo with guidance)
-            if not is_resume and redo_guidance is None and direct_instruction is None:
+            if not is_resume and redo_guidance is None and direct_instruction is None and nsfw_toggle is None:
                 player_voiceline = self.__get_player_voiceline(player_character, player_text)
             else:
                 player_voiceline = None  # No voiceline for command keywords
@@ -279,6 +283,12 @@ class conversation:
                 # Start new generation with the direct instruction
                 self.__start_generating_npc_sentences()
             # Return so game can continue
+            return player_text, events_need_updating, player_voiceline
+
+        # Check if player is toggling NSFW mode
+        if nsfw_toggle is not None:
+            new_message.is_system_generated_message = True
+            self.__toggle_nsfw_mode(nsfw_toggle == "on")
             return player_text, events_need_updating, player_voiceline
 
         ejected_npc = self.__does_dismiss_npc_from_conversation(text)
@@ -648,6 +658,43 @@ class conversation:
             return instruction
 
         return None  # Not a direct command
+
+    def __should_toggle_nsfw(self, last_user_text: str) -> str | None:
+        """Checks if the player input is an NSFW toggle command
+
+        Args:
+            last_user_text (str): the text to check
+
+        Returns:
+            str | None: "on" or "off" if matched, None otherwise
+        """
+        import re
+        nsfw_keyword = self.__context.config.nsfw_keyword.strip().lower()
+        pattern = rf"^{re.escape(nsfw_keyword)}\s+(on|off)\s*$"
+        match = re.match(pattern, last_user_text.strip(), re.IGNORECASE)
+        if match:
+            return match.group(1).lower()
+        return None
+
+    def __toggle_nsfw_mode(self, enable: bool):
+        """Toggles NSFW mode on or off, swapping the model and system prompt
+
+        Args:
+            enable (bool): True to enable NSFW, False to disable
+        """
+        if not self.__nsfw_model:
+            logging.warning("NSFW toggle requested but no NSFW model is configured. Set 'NSFW Model' in LLM settings.")
+            return
+
+        self.__nsfw_enabled = enable
+        target_model = self.__nsfw_model if enable else self.__normal_model
+        self.__llm_client.swap_model(target_model)
+
+        new_prompt = self.__conversation_type.generate_prompt(self.__context, nsfw=enable)
+        self.__messages.replace_system_message(new_prompt)
+
+        state = "ON" if enable else "OFF"
+        logging.info(f"NSFW mode toggled {state} — model: {target_model}")
 
     def __add_direct_instruction(self, instruction: str, player_name: str) -> bool:
         """Adds a director's instruction to guide NPC behavior
