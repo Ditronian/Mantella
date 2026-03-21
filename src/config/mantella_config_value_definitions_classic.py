@@ -69,6 +69,7 @@ class MantellaConfigValueDefinitionsClassic:
         prompt_category.add_config_value(PromptDefinitions.get_skyrim_multi_npc_prompt_config_value())
         prompt_category.add_config_value(PromptDefinitions.get_fallout4_prompt_config_value())
         prompt_category.add_config_value(PromptDefinitions.get_fallout4_multi_npc_prompt_config_value())
+        prompt_category.add_config_value(PromptDefinitions.get_imaginary_prompt_config_value())
         prompt_category.add_config_value(PromptDefinitions.get_radiant_start_prompt_config_value())
         prompt_category.add_config_value(PromptDefinitions.get_radiant_end_prompt_config_value())
         prompt_category.add_config_value(PromptDefinitions.get_memory_prompt_config_value())

@@ -26,6 +26,18 @@ class PromptDefinitions:
                                 "conversation_summaries",
                                 "actions"]
     
+    ALLOWED_PROMPT_VARIABLES_IMAGINARY = [
+                                "player_name",
+                                "player_description",
+                                "game",
+                                "name",
+                                "bio",
+                                "time",
+                                "time_group",
+                                "language",
+                                "conversation_summary",
+                                "actions"]
+
     ALLOWED_PROMPT_VARIABLES_RADIANT = [
                                 "game",
                                 "name",
@@ -77,6 +89,19 @@ class PromptDefinitions:
                                 equipment = a basic description of the equipment the NPCs carry
                                 actions = instructions for the LLM to trigger actions"""
         
+    BASE_IMAGINARY_DESCRIPTION = """The starting prompt sent to the LLM for imaginary conversations (talking to an NPC who is not physically present).
+                                The following are dynamic variables that need to be contained in curly brackets {}:
+                                name = the NPC's name
+                                game = the selected game
+                                bio = the NPC's background description
+                                time = the time of day as a number (eg 1, 22)
+                                time_group = the time of day in words (eg "in the morning", "at night")
+                                language = the selected language
+                                conversation_summary = reads the latest conversation summaries for the NPC
+                                player_name = the name of the player character
+                                player_description = a description of the player character
+                                actions = instructions for the LLM how to trigger actions"""
+
     class PromptChecker(ConfigValueConstraint[str]):
         def __init__(self, allowed_prompt_variables: list[str]) -> None:
             super().__init__()
@@ -140,6 +165,21 @@ class PromptDefinitions:
                                     Remember, you can only respond as {names}. Ensure to use their full name when responding.
                                     The conversation takes place in {language}."""
         return ConfigValueString("skyrim_radiant_prompt","Skyrim Radiant Conversation Prompt",PromptDefinitions.BASE_RADIANT_DESCRIPTION,skyrim_radiant_prompt,[PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES_RADIANT)])
+
+    @staticmethod
+    def get_imaginary_prompt_config_value() -> ConfigValue:
+        imaginary_prompt = """You are {name}, and you exist in the world of {game}. This is your background: {bio}
+                                You are communicating with {player_name} through thought alone — as a voice in their mind, not a physical presence. {player_name} {player_description}
+                                Sometimes in-game events will be passed before the player response within brackets. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
+                                (The player picked up a pair of gloves)
+                                Who do you think these belong to?
+                                This conversation is a script that will be spoken aloud, so please keep your responses appropriately concise and avoid text-only formatting such as numbered lists.
+                                The time is {time} {time_group}.
+                                Remember to stay in character.
+                                {actions}
+                                The conversation takes place in {language}.
+                                {conversation_summary}"""
+        return ConfigValueString("imaginary_prompt","Imaginary Conversation Prompt",PromptDefinitions.BASE_IMAGINARY_DESCRIPTION,imaginary_prompt,[PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_PROMPT_VARIABLES_IMAGINARY)])
 
     @staticmethod
     def get_fallout4_prompt_config_value() -> ConfigValue:

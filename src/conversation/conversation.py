@@ -16,7 +16,7 @@ from src.output_manager import ChatManager
 from src.llm.messages import assistant_message, system_message, user_message
 from src.conversation.context import context
 from src.llm.message_thread import message_thread
-from src.conversation.conversation_type import conversation_type, multi_npc, pc_to_npc, radiant
+from src.conversation.conversation_type import conversation_type, imaginary, multi_npc, pc_to_npc, radiant
 from src.character_manager import Character
 from src.http.communication_constants import communication_constants as comm_consts
 from src.stt import Transcriber
@@ -44,7 +44,7 @@ class conversation:
         if not self.__context.npcs_in_conversation.contains_player_character(): # TODO: fix this being set to a radiant conversation because of NPCs in conversation not yet being added
             self.__conversation_type: conversation_type = radiant(context_for_conversation.config)
         else:
-            self.__conversation_type: conversation_type = pc_to_npc(context_for_conversation.config)        
+            self.__conversation_type: conversation_type = pc_to_npc(context_for_conversation.config)
         self.__messages: message_thread = message_thread(self.__context.config, None)
         self.__output_manager: ChatManager = output_manager
         self.__rememberer: remembering = rememberer
@@ -102,6 +102,10 @@ class conversation:
         Returns:
             tuple[str, sentence | None]: Returns a tuple consisting of a reply type and an optional sentence
         """
+        # Switch to imaginary conversation type if flagged by the game
+        if self.__context.get_custom_context_value("is_imaginary"):
+            self.__conversation_type = imaginary(self.__context.config)
+
         # Check radiant topic for NSFW keyword before generating greeting
         if isinstance(self.__conversation_type, radiant):
             radiant_topic = self.__context.get_custom_context_value("radiant_topic")

@@ -325,6 +325,7 @@ LLM parameter list must follow the Python dictionary format: https://www.w3schoo
                 self.nsfw_multi_npc_prompt = self.__definitions.get_string_value("nsfw_skyrim_multi_npc_prompt")
                 self.nsfw_radiant_prompt = self.__definitions.get_string_value("nsfw_skyrim_radiant_prompt")
 
+            self.imaginary_prompt = self.__definitions.get_string_value("imaginary_prompt")
             self.radiant_start_prompt = self.__definitions.get_string_value("radiant_start_prompt")
             self.radiant_end_prompt = self.__definitions.get_string_value("radiant_end_prompt")
             self.npc_auto_continue_prompt = self.__definitions.get_string_value("npc_auto_continue_prompt")

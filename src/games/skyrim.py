@@ -61,7 +61,10 @@ class skyrim(gameable):
     @utils.time_it
     def load_external_character_info(self, base_id: str, name: str, race: str, gender: int, ingame_voice_model: str) -> external_character_info:
         character_info, is_generic_npc = self.find_character_info(base_id, name, race, gender, ingame_voice_model)
-        actor_voice_model_name = ingame_voice_model.split('<')[1].split(' ')[0]
+        if '<' in ingame_voice_model:
+            actor_voice_model_name = ingame_voice_model.split('<')[1].split(' ')[0]
+        else:
+            actor_voice_model_name = ingame_voice_model
 
         return external_character_info(name, is_generic_npc, character_info["bio"], actor_voice_model_name, character_info['voice_model'], character_info['skyrim_voice_folder'], character_info['advanced_voice_model'], character_info.get('voice_accent', None))
     
