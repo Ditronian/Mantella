@@ -225,6 +225,34 @@ class ChatManager:
                     logging.log(self.loglevel, 'Retrying connection to API...')
                     time.sleep(5)
 
+            # Drain any remaining text left in current_sentence after streaming ends
+            while current_sentence.strip() and not settings.stop_generation:
+                parsed_sentence = None
+                for parser in parser_chain:
+                    if not parsed_sentence:
+                        parsed_sentence, current_sentence = parser.cut_sentence(current_sentence, settings)
+                    if parsed_sentence:
+                        parsed_sentence, pending_sentence = parser.modify_sentence_content(parsed_sentence, pending_sentence, settings)
+                    if settings.stop_generation:
+                        break
+                if parsed_sentence:
+                    if not self.__config.narration_handling == NarrationHandlingEnum.CUT_NARRATIONS or parsed_sentence.sentence_type != SentenceTypeEnum.NARRATION:
+                        new_sentence = self.generate_sentence(parsed_sentence)
+                        blocking_queue.put(new_sentence)
+                        parsed_sentence = None
+                else:
+                    # No parser could extract a sentence — treat remainder as final sentence
+                    remaining = current_sentence.strip()
+                    if remaining:
+                        final_content = sentence_content(settings.current_speaker, remaining, SentenceTypeEnum.SPEECH, False)
+                        for parser in parser_chain:
+                            final_content, pending_sentence = parser.modify_sentence_content(final_content, pending_sentence, settings)
+                        if final_content:
+                            new_sentence = self.generate_sentence(final_content)
+                            blocking_queue.put(new_sentence)
+                    current_sentence = ''
+                    break
+
         except Exception as e:
             utils.play_error_sound()
             if isinstance(e, APIConnectionError):
