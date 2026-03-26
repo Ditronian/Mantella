@@ -346,6 +346,56 @@ class GameStateManager:
             logging.log(23, 'Restarting...')
             return None 
         
+    @utils.time_it
+    def redo_summary(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        """Regenerate the last conversation summary for the specified NPCs."""
+        try:
+            world_id = input_json.get(comm_consts.KEY_REDOSUMMARY_WORLDID, "default")
+            world_id = self.WORLD_ID_CLEANSE_REGEX.sub("", world_id)
+
+            if hasattr(self.__config, "player_name_override"):
+                override_name = str(self.__config.player_name_override).strip()
+                if override_name:
+                    suffix = "1"
+                    m = regex.search(r"(\d+)$", world_id)
+                    if m:
+                        suffix = m.group(1)
+                    world_id = self.WORLD_ID_CLEANSE_REGEX.sub("", f"{override_name}{suffix}")
+
+            user_notes = input_json.get(comm_consts.KEY_REDOSUMMARY_USERNOTES, "")
+            actors = input_json.get(comm_consts.KEY_ACTORS, [])
+
+            for actor_json in actors:
+                base_id = utils.convert_to_skyrim_hex_format(str(actor_json[comm_consts.KEY_ACTOR_BASEID]))
+                ref_id = utils.convert_to_skyrim_hex_format(str(actor_json[comm_consts.KEY_ACTOR_REFID]))
+
+                if ref_id.startswith('FE'):
+                    ref_id = ref_id[-3:].rjust(6, "0")
+                else:
+                    ref_id = ref_id[-6:]
+                if base_id.startswith('FE'):
+                    base_id = base_id[-3:].rjust(6, "0")
+                else:
+                    base_id = base_id[-6:]
+
+                character_name = str(actor_json[comm_consts.KEY_ACTOR_NAME])
+                character = Character(base_id, ref_id, character_name,
+                                      gender=0, race="", is_player_character=False,
+                                      bio="", is_in_combat=False, is_enemy=False,
+                                      relationship_rank=0, is_generic_npc=False,
+                                      ingame_voice_model="", tts_voice_model="",
+                                      csv_in_game_voice_model="", advanced_voice_model="",
+                                      voice_accent="", equipment=Equipment({}),
+                                      custom_character_values={})
+
+                logging.info(f"Redoing summary for {character_name} (ref_id={ref_id}, world_id={world_id})")
+                self.__rememberer.redo_summary_for_character(character, world_id, user_notes)
+
+            return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_REDOSUMMARY_COMPLETED}
+        except Exception as e:
+            logging.error(f"Error in redo_summary: {e}")
+            return self.error_message(f"Redo summary failed: {e}")
+
     def error_message(self, message: str) -> dict[str, Any]:
         return {
                 comm_consts.KEY_REPLYTYPE: "error",

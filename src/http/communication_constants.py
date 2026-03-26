@@ -74,6 +74,12 @@ class communication_constants:
     ACTION_ENDCONVERSATION: str = PREFIX + "end_conversation"
     ACTION_REMOVECHARACTER: str = PREFIX + "remove_character"
 
+    # Redo Summary
+    KEY_REQUESTTYPE_REDOSUMMARY: str = PREFIX + "redo_summary"
+    KEY_REDOSUMMARY_USERNOTES: str = PREFIX + "redo_summary_user_notes"
+    KEY_REDOSUMMARY_WORLDID: str = PREFIX + "redo_summary_world_id"
+    KEY_REPLYTYPE_REDOSUMMARY_COMPLETED: str = PREFIX + "redo_summary_completed"
+
     ACTION_NPC_OFFENDED: str = PREFIX + "npc_offended"
     ACTION_NPC_FORGIVEN: str = PREFIX + "npc_forgiven"
     ACTION_NPC_FOLLOW: str = PREFIX + "npc_follow"

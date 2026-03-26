@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from src.character_manager import Character
 from src.characters_manager import Characters
 from src.llm.message_thread import message_thread
 
@@ -31,5 +32,13 @@ class remembering(ABC):
     def remove_last_summary(self, npcs_in_conversation: Characters, world_id: str):
         """Removes the last saved summary for the given NPCs.
         Used when restarting a conversation to undo the summary generated at end of the previous conversation.
+        """
+        pass
+
+    @abstractmethod
+    def redo_summary_for_character(self, character: Character, world_id: str, user_notes: str = ""):
+        """Regenerates the last summary for a character using the last conversation log.
+        Optionally appends user notes to the summarization prompt for guidance.
+        Old summary is only removed after new one is successfully generated.
         """
         pass

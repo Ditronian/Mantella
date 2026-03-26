@@ -1,7 +1,9 @@
+import json
 import logging
 import os
 import time
 from src.config.config_loader import ConfigLoader
+from src.conversation.conversation_log import conversation_log
 from src.games.gameable import gameable
 from src.llm.llm_client import LLMClient
 from src.llm.message_thread import message_thread
@@ -251,3 +253,70 @@ class summaries(remembering):
             with open(conversation_summary_file, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             logging.info(f"Removed last summary for {character.name}. {len(parts)} summaries remain.")
+
+    @utils.time_it
+    def redo_summary_for_character(self, character: Character, world_id: str, user_notes: str = ""):
+        """Regenerates the last summary for a character using the last conversation log.
+
+        Safety: old summary is only removed AFTER new one is successfully generated.
+        """
+        # Step 1: Load the last conversation from JSON log
+        conversation_history_file = conversation_log._conversation_log__get_path_to_conversation_history_file(character, world_id)
+        if not os.path.exists(conversation_history_file):
+            logging.warning(f"No conversation log found for {character.name} at {conversation_history_file}. Cannot redo summary.")
+            return
+
+        try:
+            with open(conversation_history_file, 'r', encoding='utf-8') as f:
+                conversation_history = json.load(f)
+        except Exception as e:
+            logging.error(f"Error loading conversation log for {character.name}: {e}")
+            return
+
+        if not conversation_history or len(conversation_history) == 0:
+            logging.warning(f"Conversation log for {character.name} is empty. Cannot redo summary.")
+            return
+
+        last_conversation = conversation_history[-1]
+        if not last_conversation or len(last_conversation) == 0:
+            logging.warning(f"Last conversation for {character.name} has no messages. Cannot redo summary.")
+            return
+
+        # Step 2: Convert messages to text for summarization
+        conversation_text = ""
+        for msg in last_conversation:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            if content:
+                conversation_text += f"{role}: {content}\n"
+
+        if len(conversation_text.strip()) < 5:
+            logging.warning(f"Last conversation for {character.name} has too little content. Cannot redo summary.")
+            return
+
+        # Step 3: Build summarization prompt with optional user notes
+        prompt = self.__memory_prompt.format(
+            name=character.name,
+            language=self.__language_name,
+            game=self.__game
+        )
+        if user_notes and user_notes.strip():
+            prompt += f"\n\nUser note: {user_notes.strip()}"
+
+        # Step 4: Generate new summary (BEFORE removing old one)
+        try:
+            new_summary = self.summarize_conversation(conversation_text, prompt, character.name)
+        except Exception as e:
+            logging.error(f"Failed to generate redo summary for {character.name}: {e}")
+            return
+
+        if not new_summary or len(new_summary.strip()) == 0:
+            logging.error(f"Redo summary generation returned empty result for {character.name}. Old summary preserved.")
+            return
+
+        # Step 5: Only NOW remove the old summary (new one succeeded)
+        self.__remove_last_summary_for_character(character, world_id)
+
+        # Step 6: Save the new summary
+        self.__append_new_conversation_summary(new_summary, character, world_id)
+        logging.info(f"Successfully redone summary for {character.name}")
