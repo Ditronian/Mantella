@@ -35,6 +35,10 @@ class action:
     @property
     def prompt_text(self) -> str:
         return self.__prompt_text
+
+    @prompt_text.setter
+    def prompt_text(self, value: str):
+        self.__prompt_text = value
     
     @property
     def is_interrupting(self) -> bool:

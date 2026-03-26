@@ -5,6 +5,9 @@ from src.config.types.config_value_string import ConfigValueString
 from src.config.config_value_constraint import ConfigValueConstraint, ConfigValueConstraintResult
 
 
+from src.conversation.action import action as ActionType
+
+
 class PromptDefinitions:
     ALLOWED_PROMPT_VARIABLES = ["player_name",
                                 "player_description",
@@ -41,18 +44,24 @@ class PromptDefinitions:
     ALLOWED_PROMPT_VARIABLES_RADIANT = [
                                 "game",
                                 "name",
-                                "names",                                
+                                "names",
                                 "bio",
                                 "bios",
                                 "equipment",
                                 "location",
                                 "weather",
-                                "time", 
-                                "time_group", 
-                                "language", 
+                                "time",
+                                "time_group",
+                                "language",
                                 "conversation_summary",
                                 "conversation_summaries",
                                 "actions"]
+
+    ALLOWED_REDO_VARIABLES_WITH_GUIDANCE = ["removed_content", "guidance"]
+    ALLOWED_REDO_VARIABLES_WITHOUT_GUIDANCE = ["removed_content"]
+    ALLOWED_DIRECT_VARIABLES = ["instruction"]
+    ALLOWED_RADIANT_DIRECTION_VARIABLES = ["direction"]
+    ALLOWED_ACTION_PROMPT_VARIABLES = ["key"]
     
     BASE_PROMPT_DESCRIPTION = """The starting prompt sent to the LLM when an NPC is selected.
                                 The following are dynamic variables that need to be contained in curly brackets {}:
@@ -371,3 +380,42 @@ class PromptDefinitions:
                                                 The NPC will continue the conversation naturally based on this directive."""
         npc_auto_continue_prompt = """The player has not responded. You should continue the conversation naturally. You may: elaborate on what you previously said, ask a follow-up question, start a new related topic, comment on the silence, or make an observation about your surroundings."""
         return ConfigValueString("npc_auto_continue_prompt","NPC Auto-Continuation Prompt",npc_auto_continue_prompt_description,npc_auto_continue_prompt,[PromptDefinitions.PromptChecker([])])
+
+    @staticmethod
+    def get_redo_with_guidance_prompt_config_value() -> ConfigValue:
+        default = "<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response with this guidance: {guidance}>>>"
+        description = """The directive injected when the player asks an NPC to redo their response WITH specific guidance.
+                        Variables: {removed_content} = the NPC's previous response, {guidance} = the player's guidance text."""
+        return ConfigValueString("redo_with_guidance_prompt", "Redo Directive (With Guidance)", description, default,
+                                 [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_REDO_VARIABLES_WITH_GUIDANCE)])
+
+    @staticmethod
+    def get_redo_without_guidance_prompt_config_value() -> ConfigValue:
+        default = "<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response differently.>>>"
+        description = """The directive injected when the player asks an NPC to redo their response WITHOUT specific guidance.
+                        Variables: {removed_content} = the NPC's previous response."""
+        return ConfigValueString("redo_without_guidance_prompt", "Redo Directive (Without Guidance)", description, default,
+                                 [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_REDO_VARIABLES_WITHOUT_GUIDANCE)])
+
+    @staticmethod
+    def get_direct_instruction_prompt_config_value() -> ConfigValue:
+        default = "<<<DIRECTOR'S INSTRUCTION: {instruction}>>>"
+        description = """The directive format injected when the player uses the direct command to instruct an NPC.
+                        Variables: {instruction} = the player's instruction text."""
+        return ConfigValueString("direct_instruction_prompt", "Director's Instruction", description, default,
+                                 [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_DIRECT_VARIABLES)])
+
+    @staticmethod
+    def get_radiant_direction_prompt_config_value() -> ConfigValue:
+        default = "<<<RADIANT DIRECTION: {direction}>>>"
+        description = """The directive format injected when providing direction to a radiant conversation.
+                        Variables: {direction} = the direction text."""
+        return ConfigValueString("radiant_direction_prompt", "Radiant Direction", description, default,
+                                 [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_RADIANT_DIRECTION_VARIABLES)])
+
+    @staticmethod
+    def get_action_prompt_override(act: ActionType) -> ConfigValue:
+        description = f"""The prompt text for the '{act.name}' action. This is injected into the system prompt to instruct the LLM how to trigger the action.
+                        Variables: {{key}} = the action's keyword."""
+        return ConfigValueString(f"{act.identifier}_prompt_text", f"{act.name} Action Prompt", description,
+                                 act.prompt_text, [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_ACTION_PROMPT_VARIABLES)])

@@ -212,22 +212,43 @@ class SettingsUIConstructor(ConfigValueVisitor):
         return self.__construct_error_message_panel(result.error_message, is_visible=not result.is_success)
 
     def visit_ConfigValueGroup(self, config_value: ConfigValueGroup):
-        if not config_value.is_hidden:            
-            has_advanced_values = False
+        if not config_value.is_hidden:
+            tab_groups = []
+            accordion_groups = []
             regular_settings = []
             advanced_settings = []
-            for cf in config_value.value:
-                if not cf.is_hidden:
-                    if ConfigValueTag.advanced in cf.tags:
-                        advanced_settings.append(cf)
-                        has_advanced_values = True
-                    else:
-                        regular_settings.append(cf)
 
-            for i, cf in enumerate(regular_settings):
+            for cf in config_value.value:
+                if cf.is_hidden:
+                    continue
+                if isinstance(cf, ConfigValueGroup):
+                    # Groups containing sub-groups render as tabs; leaf-only groups as accordions
+                    has_subgroups = any(isinstance(child, ConfigValueGroup) for child in cf.value if not child.is_hidden)
+                    if has_subgroups:
+                        tab_groups.append(cf)
+                    else:
+                        accordion_groups.append(cf)
+                elif ConfigValueTag.advanced in cf.tags:
+                    advanced_settings.append(cf)
+                else:
+                    regular_settings.append(cf)
+
+            if tab_groups:
+                with gr.Tabs():
+                    for sg in tab_groups:
+                        with gr.Tab(sg.name):
+                            sg.accept_visitor(self)
+
+            for cf in regular_settings:
                 cf.accept_visitor(self)
-            
-            if has_advanced_values:
+
+            for sg in accordion_groups:
+                with gr.Accordion(label=sg.name, open=False):
+                    for child in sg.value:
+                        if not child.is_hidden:
+                            child.accept_visitor(self)
+
+            if advanced_settings:
                 with gr.Accordion(label="Advanced", open=False):
                     for cf in advanced_settings:
                         cf.accept_visitor(self)

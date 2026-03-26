@@ -632,10 +632,10 @@ class conversation:
         # Include the removed response for context so LLM knows what it said before
         if guidance:
             # Redo with specific guidance
-            directive_text = f"<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response with this guidance: {guidance}>>>"
+            directive_text = self.__context.config.redo_with_guidance_prompt.format(removed_content=removed_content, guidance=guidance)
         else:
             # Redo without guidance - just try again differently
-            directive_text = f"<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response differently.>>>"
+            directive_text = self.__context.config.redo_without_guidance_prompt.format(removed_content=removed_content)
 
         redo_directive = user_message(
             self.__context.config,
@@ -720,7 +720,7 @@ class conversation:
             bool: True if successful
         """
         # Add directive as user_message with clear marking
-        directive_text = f"<<<DIRECTOR'S INSTRUCTION: {instruction}>>>"
+        directive_text = self.__context.config.direct_instruction_prompt.format(instruction=instruction)
 
         direct_directive = user_message(
             self.__context.config,
@@ -780,7 +780,7 @@ class conversation:
             bool: True if successful
         """
         # Frame as out-of-character direction
-        directive_text = f"<<<RADIANT DIRECTION: {direction}>>>"
+        directive_text = self.__context.config.radiant_direction_prompt.format(direction=direction)
 
         radiant_directive = user_message(
             self.__context.config,

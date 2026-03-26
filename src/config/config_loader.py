@@ -333,6 +333,16 @@ LLM parameter list must follow the Python dictionary format: https://www.w3schoo
             self.resummarize_prompt = self.__definitions.get_string_value("resummarize_prompt")
             self.vision_prompt = self.__definitions.get_string_value("vision_prompt")
 
+            # Directive prompts
+            self.redo_with_guidance_prompt = self.__definitions.get_string_value("redo_with_guidance_prompt")
+            self.redo_without_guidance_prompt = self.__definitions.get_string_value("redo_without_guidance_prompt")
+            self.direct_instruction_prompt = self.__definitions.get_string_value("direct_instruction_prompt")
+            self.radiant_direction_prompt = self.__definitions.get_string_value("radiant_direction_prompt")
+
+            # Action prompt overrides
+            for a in self.__actions:
+                a.prompt_text = self.__definitions.get_string_value(f"{a.identifier}_prompt_text")
+
             # Vision
             self.vision_enabled = self.__definitions.get_bool_value('vision_enabled')
             self.low_resolution_mode = self.__definitions.get_bool_value("low_resolution_mode")
