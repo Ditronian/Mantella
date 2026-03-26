@@ -135,9 +135,10 @@ class MantellaConfigValueDefinitionsNew:
 
         # --- Skyrim sub-group (rendered as tab) ---
         skyrim_prompts = ConfigValueGroup("Prompts_Skyrim", "Skyrim", "Skyrim conversation prompts.", on_value_change_callback)
-        skyrim_prompts.add_config_value(PromptDefinitions.get_skyrim_prompt_config_value())
-        skyrim_prompts.add_config_value(PromptDefinitions.get_skyrim_multi_npc_prompt_config_value())
-        skyrim_prompts.add_config_value(PromptDefinitions.get_skyrim_radiant_prompt_config_value())
+        skyrim_standard = ConfigValueGroup("Prompts_Skyrim_Standard", "Standard", "Standard Skyrim conversation prompts.", on_value_change_callback)
+        skyrim_standard.add_config_value(PromptDefinitions.get_skyrim_prompt_config_value())
+        skyrim_standard.add_config_value(PromptDefinitions.get_skyrim_multi_npc_prompt_config_value())
+        skyrim_prompts.add_config_value(skyrim_standard)
         skyrim_nsfw = ConfigValueGroup("Prompts_Skyrim_NSFW", "NSFW", "NSFW Skyrim prompts.", on_value_change_callback)
         skyrim_nsfw.add_config_value(PromptDefinitions.get_nsfw_skyrim_prompt_config_value())
         skyrim_nsfw.add_config_value(PromptDefinitions.get_nsfw_skyrim_multi_npc_prompt_config_value())
@@ -147,9 +148,10 @@ class MantellaConfigValueDefinitionsNew:
 
         # --- Fallout 4 sub-group (rendered as tab) ---
         fallout_prompts = ConfigValueGroup("Prompts_Fallout4", "Fallout 4", "Fallout 4 conversation prompts.", on_value_change_callback)
-        fallout_prompts.add_config_value(PromptDefinitions.get_fallout4_prompt_config_value())
-        fallout_prompts.add_config_value(PromptDefinitions.get_fallout4_multi_npc_prompt_config_value())
-        fallout_prompts.add_config_value(PromptDefinitions.get_fallout4_radiant_prompt_config_value())
+        fallout_standard = ConfigValueGroup("Prompts_Fallout4_Standard", "Standard", "Standard Fallout 4 conversation prompts.", on_value_change_callback)
+        fallout_standard.add_config_value(PromptDefinitions.get_fallout4_prompt_config_value())
+        fallout_standard.add_config_value(PromptDefinitions.get_fallout4_multi_npc_prompt_config_value())
+        fallout_prompts.add_config_value(fallout_standard)
         fallout_nsfw = ConfigValueGroup("Prompts_Fallout4_NSFW", "NSFW", "NSFW Fallout 4 prompts.", on_value_change_callback)
         fallout_nsfw.add_config_value(PromptDefinitions.get_nsfw_fallout4_prompt_config_value())
         fallout_nsfw.add_config_value(PromptDefinitions.get_nsfw_fallout4_multi_npc_prompt_config_value())
@@ -157,22 +159,34 @@ class MantellaConfigValueDefinitionsNew:
         fallout_prompts.add_config_value(fallout_nsfw)
         prompts_category.add_config_value(fallout_prompts)
 
-        # --- Shared prompts (always visible below game tabs) ---
-        prompts_category.add_config_value(PromptDefinitions.get_imaginary_prompt_config_value())
-        prompts_category.add_config_value(PromptDefinitions.get_memory_prompt_config_value())
-        prompts_category.add_config_value(PromptDefinitions.get_resummarize_prompt_config_value())
-        prompts_category.add_config_value(PromptDefinitions.get_vision_prompt_config_value())
-        prompts_category.add_config_value(PromptDefinitions.get_radiant_start_prompt_config_value())
-        prompts_category.add_config_value(PromptDefinitions.get_radiant_end_prompt_config_value())
-        prompts_category.add_config_value(PromptDefinitions.get_npc_auto_continue_prompt_config_value())
+        # --- Radiant (accordion) ---
+        radiant_group = ConfigValueGroup("Prompts_Radiant", "Radiant", "All prompts related to NPC-to-NPC radiant conversations.", on_value_change_callback)
+        radiant_group.add_config_value(PromptDefinitions.get_skyrim_radiant_prompt_config_value())
+        radiant_group.add_config_value(PromptDefinitions.get_fallout4_radiant_prompt_config_value())
+        radiant_group.add_config_value(PromptDefinitions.get_radiant_start_prompt_config_value())
+        radiant_group.add_config_value(PromptDefinitions.get_radiant_end_prompt_config_value())
+        radiant_group.add_config_value(PromptDefinitions.get_radiant_direction_prompt_config_value())
+        prompts_category.add_config_value(radiant_group)
 
         # --- Directives (accordion) ---
-        directives_group = ConfigValueGroup("Prompts_Directives", "Directives", "Directive prompts used during conversations for redo, direct, and radiant commands.", on_value_change_callback)
+        directives_group = ConfigValueGroup("Prompts_Directives", "Directives", "Directive prompts injected during conversations.", on_value_change_callback)
         directives_group.add_config_value(PromptDefinitions.get_redo_with_guidance_prompt_config_value())
         directives_group.add_config_value(PromptDefinitions.get_redo_without_guidance_prompt_config_value())
         directives_group.add_config_value(PromptDefinitions.get_direct_instruction_prompt_config_value())
-        directives_group.add_config_value(PromptDefinitions.get_radiant_direction_prompt_config_value())
+        directives_group.add_config_value(PromptDefinitions.get_npc_auto_continue_prompt_config_value())
         prompts_category.add_config_value(directives_group)
+
+        # --- Memory (accordion) ---
+        memory_group = ConfigValueGroup("Prompts_Memory", "Memory", "Prompts for conversation summarization and memory management.", on_value_change_callback)
+        memory_group.add_config_value(PromptDefinitions.get_memory_prompt_config_value())
+        memory_group.add_config_value(PromptDefinitions.get_resummarize_prompt_config_value())
+        prompts_category.add_config_value(memory_group)
+
+        # --- Other (accordion) ---
+        other_prompts_group = ConfigValueGroup("Prompts_Other", "Other", "Miscellaneous prompts.", on_value_change_callback)
+        other_prompts_group.add_config_value(PromptDefinitions.get_imaginary_prompt_config_value())
+        other_prompts_group.add_config_value(PromptDefinitions.get_vision_prompt_config_value())
+        prompts_category.add_config_value(other_prompts_group)
 
         # --- Action Prompts (accordion) ---
         actions_prompts_group = ConfigValueGroup("Prompts_Actions", "Action Prompts", "Prompts that instruct the LLM how to trigger in-game actions.", on_value_change_callback)
