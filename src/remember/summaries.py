@@ -15,6 +15,8 @@ class summaries(remembering):
     """ Stores a conversation as a summary in a text file.
         Loads the latest summary from disk for a prompt text.
     """
+    SUMMARY_SEPARATOR = "---SUMMARY_BOUNDARY---"
+
     def __init__(self, game: gameable, config: ConfigLoader, client: LLMClient, language_name: str, summary_limit_pct: float = 0.3) -> None:
         super().__init__()
         self.loglevel = 28
@@ -44,7 +46,7 @@ class summaries(remembering):
                     with open(conversation_summary_file, 'r', encoding='utf-8') as f:
                         for line in f:
                             line = line.strip()
-                            if line and line not in paragraphs:
+                            if line and line != summaries.SUMMARY_SEPARATOR and line not in paragraphs:
                                 paragraphs.append(line.strip())
         if paragraphs:
             result = "\n".join(paragraphs)
@@ -200,7 +202,7 @@ class summaries(remembering):
             summary = summary.replace('an AI assistant', npc_name)
             summary = summary.replace('The user', 'The player')
             summary = summary.replace('the user', 'the player')
-            summary += '\n\n'
+            summary += f'\n{summaries.SUMMARY_SEPARATOR}\n'
 
             logging.log(self.loglevel, f'Conversation summary: {summary.strip()}')
             logging.info(f"Conversation summary saved")
@@ -208,3 +210,44 @@ class summaries(remembering):
             logging.info(f"Conversation summary not saved. Not enough dialogue spoken.")
 
         return summary
+
+    @utils.time_it
+    def remove_last_summary(self, npcs_in_conversation: Characters, world_id: str):
+        """Remove the last appended summary for all NPCs in the conversation.
+        Called when the player uses the 'restart' command to continue a previous conversation,
+        because the summary generated when that conversation ended is now invalid.
+        """
+        for character in npcs_in_conversation.get_all_characters():
+            if not character.is_player_character:
+                self.__remove_last_summary_for_character(character, world_id)
+
+    def __remove_last_summary_for_character(self, character: Character, world_id: str):
+        conversation_summary_file = self.__get_latest_conversation_summary_file_path(character, world_id)
+        if not os.path.exists(conversation_summary_file):
+            logging.info(f"No summary file found for {character.name}, nothing to remove")
+            return
+
+        with open(conversation_summary_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        parts = content.split(summaries.SUMMARY_SEPARATOR)
+        parts = [p for p in parts if p.strip()]
+
+        if len(parts) <= 1:
+            # Only one or zero summaries - check if this is a higher-numbered re-summary file
+            base_directory, filename = os.path.split(conversation_summary_file)
+            file_prefix, file_num_str = filename.rsplit('_', 1)
+            file_num = int(os.path.splitext(file_num_str)[0])
+
+            os.remove(conversation_summary_file)
+            if file_num > 1:
+                logging.info(f"Removed summary file {conversation_summary_file} (re-summarized file with only 1 entry)")
+            else:
+                logging.info(f"Removed last (only) summary from {conversation_summary_file}")
+        else:
+            # Remove the last part and reconstruct
+            parts = parts[:-1]
+            new_content = summaries.SUMMARY_SEPARATOR.join(p if p.endswith('\n') else p + '\n' for p in parts) + summaries.SUMMARY_SEPARATOR + '\n'
+            with open(conversation_summary_file, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            logging.info(f"Removed last summary for {character.name}. {len(parts)} summaries remain.")

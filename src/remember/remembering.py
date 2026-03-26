@@ -26,3 +26,10 @@ class remembering(ABC):
             npcs_in_conversation (Characters): the NPCs to save for
         """
         pass
+
+    @abstractmethod
+    def remove_last_summary(self, npcs_in_conversation: Characters, world_id: str):
+        """Removes the last saved summary for the given NPCs.
+        Used when restarting a conversation to undo the summary generated at end of the previous conversation.
+        """
+        pass

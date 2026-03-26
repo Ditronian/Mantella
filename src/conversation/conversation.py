@@ -845,6 +845,13 @@ class conversation:
         Note: Only loads the LAST conversation from the character's history file, not all conversations.
         """
         try:
+            # Remove the summary that was generated when the previous conversation ended,
+            # since we're now continuing that conversation rather than starting fresh
+            self.__rememberer.remove_last_summary(
+                self.__context.npcs_in_conversation,
+                self.__context.world_id
+            )
+
             all_characters = self.__context.npcs_in_conversation.get_all_characters()
 
             # For multi-NPC conversations, we need to load and merge histories from all NPCs
