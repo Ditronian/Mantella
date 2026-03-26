@@ -637,13 +637,7 @@ class conversation:
             # Redo without guidance - just try again differently
             directive_text = self.__context.config.redo_without_guidance_prompt.format(removed_content=removed_content)
 
-        redo_directive = user_message(
-            self.__context.config,
-            directive_text,
-            player_name,
-            is_system_generated_message=False  # Keep it in history for context
-        )
-        redo_directive.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
+        redo_directive = system_message(directive_text, self.__context.config)
         self.__messages.add_message(redo_directive)
 
         logging.info(f"Added redo directive{' with guidance: ' + guidance if guidance else ' (no specific guidance)'}")

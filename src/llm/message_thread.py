@@ -55,7 +55,7 @@ class message_thread():
     def get_openai_messages(self) -> list[ChatCompletionMessageParam]:
         return message_thread.transform_to_openai_messages(self.__messages)
 
-    def add_message(self, new_message: user_message | assistant_message | image_message | image_description_message):
+    def add_message(self, new_message: user_message | assistant_message | image_message | image_description_message | system_message):
         self.__messages.append(new_message)
 
     @utils.time_it
