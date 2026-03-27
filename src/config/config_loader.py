@@ -194,11 +194,17 @@ class ConfigLoader:
                     self.piper_path = self.__definitions.get_string_value("piper_folder")
                 self.xvasynth_path = ""
                 self.xtts_server_path = ""
+            elif self.tts_service == "fish audio":
+                self.xvasynth_path = ""
+                self.xtts_server_path = ""
+                self.piper_path = ""
             else: # default to Piper
                 if not hasattr(self, 'piper_path'):
                     self.piper_path = self.__definitions.get_string_value("piper_folder")
                 self.xvasynth_path = ""
                 self.xtts_server_path = ""
+
+            self.fish_audio_api_key = self.__definitions.get_string_value("fish_audio_api_key").strip()
 
             self.lip_generation = self.__definitions.get_string_value("lip_generation").strip().lower()
             self.fast_response_mode = self.__definitions.get_bool_value("fast_response_mode")

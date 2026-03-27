@@ -26,13 +26,14 @@ from src.llm.messages import message
 from src.llm.message_thread import message_thread
 from src.llm.ai_client import AIClient
 from src.tts.ttsable import ttsable
+from src.tts.tts_provider_registry import TTSProviderRegistry
 from src.tts.synthesization_options import SynthesizationOptions
 
 class ChatManager:
-    def __init__(self, config: ConfigLoader, tts: ttsable, client: AIClient):
+    def __init__(self, config: ConfigLoader, tts_registry: TTSProviderRegistry, client: AIClient):
         self.loglevel = 28
         self.__config: ConfigLoader = config
-        self.__tts: ttsable = tts
+        self.__tts_registry: TTSProviderRegistry = tts_registry
         self.__client: AIClient = client
         self.__is_generating: bool = False
         self.__stop_generation = asyncio.Event()
@@ -43,7 +44,12 @@ class ChatManager:
 
     @property
     def tts(self) -> ttsable:
-        return self.__tts
+        """Returns the default TTS provider for backward compatibility"""
+        return self.__tts_registry.default_provider
+
+    @property
+    def tts_registry(self) -> TTSProviderRegistry:
+        return self.__tts_registry
     
     @utils.time_it
     def generate_sentence(self, content: sentence_content) -> mantella_sentence:
@@ -77,10 +83,12 @@ class ChatManager:
                 try:
                     if self.__config.narration_handling == NarrationHandlingEnum.USE_NARRATOR and content.sentence_type == SentenceTypeEnum.NARRATION:
                         synth_options = SynthesizationOptions(False, self.__is_first_sentence)
-                        audio_file = self.__tts.synthesize(self.__config.narrator_voice, text, self.__config.narrator_voice, self.__config.narrator_voice, "en", synth_options, self.__config.narrator_voice)
+                        tts = self.__tts_registry.get_provider()
+                        audio_file = tts.synthesize(self.__config.narrator_voice, text, self.__config.narrator_voice, self.__config.narrator_voice, "en", synth_options, self.__config.narrator_voice)
                     else:
                         synth_options = SynthesizationOptions(character_to_talk.is_in_combat, self.__is_first_sentence)
-                        audio_file = self.__tts.synthesize(character_to_talk.tts_voice_model, text, character_to_talk.in_game_voice_model, character_to_talk.csv_in_game_voice_model, character_to_talk.voice_accent, synth_options, character_to_talk.advanced_voice_model)
+                        tts = self.__tts_registry.get_provider(character_to_talk.tts_provider)
+                        audio_file = tts.synthesize(character_to_talk.tts_voice_model, text, character_to_talk.in_game_voice_model, character_to_talk.csv_in_game_voice_model, character_to_talk.voice_accent, synth_options, character_to_talk.advanced_voice_model)
                     # Success! Break out of retry loop
                     break
                 except Exception as e:

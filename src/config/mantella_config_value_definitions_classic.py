@@ -122,6 +122,7 @@ class MantellaConfigValueDefinitionsClassic:
         speech_advanced_category.add_config_value(TTSDefinitions.get_pace_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_use_cleanup_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_use_sr_config_value())
+        speech_advanced_category.add_config_value(TTSDefinitions.get_fish_audio_api_key_config_value())
         speech_advanced_category.add_config_value(TTSDefinitions.get_tts_print_config_value())
         result.append(speech_advanced_category)
         

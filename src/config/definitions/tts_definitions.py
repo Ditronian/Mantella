@@ -51,7 +51,7 @@ If you have trouble installing the xVASynth version from Nexus, try installing i
     
     @staticmethod
     def get_tts_service_config_value() -> ConfigValue:
-        return ConfigValueSelection("tts_service","TTS Service","The TTS service used by Mantella.","Piper",["Piper", "xVASynth", "XTTS"])
+        return ConfigValueSelection("tts_service","TTS Service","The TTS service used by Mantella.","Piper",["Piper", "xVASynth", "XTTS", "Fish Audio"])
     
     @staticmethod
     def get_number_words_tts_config_value() -> ConfigValue:
@@ -84,7 +84,8 @@ If you have trouble installing the xVASynth version from Nexus, try installing i
         description = """The URL that your XTTS server is running on.
                         Examples:
                         http://127.0.0.1:8020 when running XTTS locally.
-                        https://{POD_ID}-8020.proxy.runpod.net when running XTTS in a RunPod GPU pod."""
+                        https://{POD_ID}-8020.proxy.runpod.net when running XTTS in a RunPod GPU pod.
+                        http://{INSTANCE_IP}:8020 when running XTTS on a Vast.ai instance."""
         return ConfigValueString("xtts_url","XTTS URL",description, "http://127.0.0.1:8020",tags=[ConfigValueTag.advanced])
     
     @staticmethod
@@ -155,6 +156,10 @@ If you have trouble installing the xVASynth version from Nexus, try installing i
                         This is a fairly slow process on CPUs, but on some GPUs it can be relatively fast."""
         return ConfigValueBool("use_sr","xVASynth Super Resolution",description, False, tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
     
+    @staticmethod
+    def get_fish_audio_api_key_config_value() -> ConfigValue:
+        return ConfigValueString("fish_audio_api_key", "Fish Audio API Key", "API key for Fish.audio TTS service. Get one at https://fish.audio", "", tags=[ConfigValueTag.advanced])
+
     @staticmethod
     def get_tts_print_config_value() -> ConfigValue:
         return ConfigValueBool("tts_print","Print TTS Output","Print the output from the TTS service in the Mantella.exe window.", False, tags=[ConfigValueTag.advanced])

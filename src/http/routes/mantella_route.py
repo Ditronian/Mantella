@@ -12,10 +12,7 @@ from src.llm.llm_client import LLMClient
 from src.game_manager import GameStateManager
 from src.http.routes.routeable import routeable
 from src.http.communication_constants import communication_constants as comm_consts
-from src.tts.ttsable import ttsable
-from src.tts.xvasynth import xvasynth
-from src.tts.xtts import xtts
-from src.tts.piper import piper
+from src.tts.tts_provider_registry import TTSProviderRegistry
 from src import utils
 
 class mantella_route(routeable):
@@ -49,17 +46,11 @@ class mantella_route(routeable):
         else:
             game = skyrim(self._config)
 
-        tts: ttsable
-        if self._config.tts_service == 'xvasynth':
-            tts = xvasynth(self._config)
-        elif self._config.tts_service == 'xtts':
-            tts = xtts(self._config, game)
-        if self._config.tts_service == 'piper':
-            tts = piper(self._config, game)
+        tts_registry = TTSProviderRegistry(self._config, game)
 
         llm_client = LLMClient(self._config, self.__secret_key_file, self.__image_secret_key_file)
-        
-        chat_manager = ChatManager(self._config, tts, llm_client)
+
+        chat_manager = ChatManager(self._config, tts_registry, llm_client)
         self.__game = GameStateManager(game, chat_manager, self._config, self.__language_info, llm_client, self.__stt_secret_key_file, self.__secret_key_file)
 
     @utils.time_it

@@ -4,7 +4,7 @@ from src.games.equipment import Equipment
 class Character:
     """Representation of a character in the game
     """
-    def __init__(self, base_id: str, ref_id: str,  name: str, gender: int, race: str, is_player_character: bool, bio: str, is_in_combat: bool, is_enemy: bool, relationship_rank: int, is_generic_npc: bool, ingame_voice_model:str, tts_voice_model: str, csv_in_game_voice_model: str, advanced_voice_model: str, voice_accent: str, equipment:Equipment, custom_character_values: dict[str, Any]):
+    def __init__(self, base_id: str, ref_id: str,  name: str, gender: int, race: str, is_player_character: bool, bio: str, is_in_combat: bool, is_enemy: bool, relationship_rank: int, is_generic_npc: bool, ingame_voice_model:str, tts_voice_model: str, csv_in_game_voice_model: str, advanced_voice_model: str, voice_accent: str, tts_provider: str, equipment:Equipment, custom_character_values: dict[str, Any]):
         self.__base_id: str = base_id
         self.__ref_id: str = ref_id
         self.__name: str = name
@@ -21,6 +21,7 @@ class Character:
         self.__csv_in_game_voice_model = csv_in_game_voice_model # info['skyrim_voice_folder'] if 'skyrim' in game.lower() else info['fallout4_voice_folder']
         self.__advanced_voice_model = advanced_voice_model
         self.__voice_accent = voice_accent #info.get('voice_accent', None)
+        self.__tts_provider = tts_provider
         self.__equipment = equipment
         self.__custom_character_values: dict[str, Any] = custom_character_values
 
@@ -163,6 +164,14 @@ class Character:
     @voice_accent.setter
     def voice_accent(self, value: str):
         self.__voice_accent = value
+
+    @property
+    def tts_provider(self) -> str:
+        return self.__tts_provider
+
+    @tts_provider.setter
+    def tts_provider(self, value: str):
+        self.__tts_provider = value
 
     @property
     def custom_character_values(self) -> dict[str, Any]:

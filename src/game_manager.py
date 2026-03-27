@@ -316,6 +316,7 @@ class GameStateManager:
             csv_in_game_voice_model: str = ""
             advanced_voice_model: str = ""
             voice_accent: str = ""
+            tts_provider: str = ""
             is_player_character: bool = bool(json[comm_consts.KEY_ACTOR_ISPLAYER])
             if is_player_character and hasattr(self.__config, "player_name_override"):
                 override_name = str(self.__config.player_name_override).strip()
@@ -329,6 +330,7 @@ class GameStateManager:
                     csv_in_game_voice_model = already_loaded_character.csv_in_game_voice_model
                     advanced_voice_model = already_loaded_character.advanced_voice_model
                     voice_accent = already_loaded_character.voice_accent
+                    tts_provider = already_loaded_character.tts_provider
                     is_generic_npc = already_loaded_character.is_generic_npc
             elif self.__talk and not is_player_character :#If this is not the player and the character has not already been loaded
                 external_info: external_character_info = self.__game.load_external_character_info(base_id, character_name, race, gender, actor_voice_model)
@@ -338,6 +340,7 @@ class GameStateManager:
                 csv_in_game_voice_model = external_info.csv_in_game_voice_model
                 advanced_voice_model = external_info.advanced_voice_model
                 voice_accent = external_info.voice_accent
+                tts_provider = external_info.tts_provider
                 is_generic_npc = external_info.is_generic_npc
                 if is_generic_npc:
                     character_name = external_info.name
@@ -359,6 +362,7 @@ class GameStateManager:
                         csv_in_game_voice_model = str(row.get(voice_folder_col, '') or '')
                         advanced_voice_model = str(row.get('advanced_voice_model', '') or '')
                         voice_accent = str(row.get('voice_accent', '') or '')
+                        tts_provider = str(row.get('tts_provider', '') or '')
 
             return Character(base_id,
                             ref_id,
@@ -376,6 +380,7 @@ class GameStateManager:
                             csv_in_game_voice_model,
                             advanced_voice_model,
                             voice_accent,
+                            tts_provider,
                             equipment,
                             custom_values)
         except CharacterDoesNotExist:                 
@@ -421,7 +426,8 @@ class GameStateManager:
                                       relationship_rank=0, is_generic_npc=False,
                                       ingame_voice_model="", tts_voice_model="",
                                       csv_in_game_voice_model="", advanced_voice_model="",
-                                      voice_accent="", equipment=Equipment({}),
+                                      voice_accent="", tts_provider="",
+                                      equipment=Equipment({}),
                                       custom_character_values={})
 
                 logging.info(f"Redoing summary for {character_name} (ref_id={ref_id}, world_id={world_id})")
@@ -468,13 +474,14 @@ class GameStateManager:
         if not self.__talk.context.npcs_in_conversation.contains_multiple_npcs() and is_npc_speaking_first and not self.__conv_has_narrator:
             character_to_talk = self.__talk.context.npcs_in_conversation.last_added_character
             if character_to_talk:
-                self.__talk.output_manager.tts.change_voice(
-                    character_to_talk.tts_voice_model, 
-                    character_to_talk.in_game_voice_model, 
-                    character_to_talk.csv_in_game_voice_model, 
-                    character_to_talk.advanced_voice_model, 
-                    character_to_talk.voice_accent, 
-                    voice_gender=character_to_talk.gender, 
+                provider = self.__talk.output_manager.tts_registry.get_provider(character_to_talk.tts_provider)
+                provider.change_voice(
+                    character_to_talk.tts_voice_model,
+                    character_to_talk.in_game_voice_model,
+                    character_to_talk.csv_in_game_voice_model,
+                    character_to_talk.advanced_voice_model,
+                    character_to_talk.voice_accent,
+                    voice_gender=character_to_talk.gender,
                     voice_race=character_to_talk.race
                 )
             else:
