@@ -168,6 +168,42 @@ class GameStateManager:
             return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
 
     @utils.time_it
+    def redo_response(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        if not self.__talk:
+            return self.error_message("No running conversation.")
+        guidance = input_json.get(comm_consts.KEY_REDO_GUIDANCE, '')
+        self.__first_line = True
+        self.__talk.redo_response(guidance)
+        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
+
+    @utils.time_it
+    def direct_npcs(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        if not self.__talk:
+            return self.error_message("No running conversation.")
+        instruction = input_json.get(comm_consts.KEY_DIRECT_INSTRUCTION, '')
+        if not instruction:
+            return self.error_message("Direct instruction cannot be empty.")
+        self.__first_line = True
+        self.__talk.direct_npcs(instruction)
+        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
+
+    @utils.time_it
+    def resume_conversation(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        if not self.__talk:
+            return self.error_message("No running conversation.")
+        self.__first_line = True
+        self.__talk.resume_conversation()
+        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
+
+    @utils.time_it
+    def nsfw_toggle(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        if not self.__talk:
+            return self.error_message("No running conversation.")
+        enable = input_json.get(comm_consts.KEY_NSFW_ENABLE, False)
+        self.__talk.toggle_nsfw(enable)
+        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_PLAYERTALK}
+
+    @utils.time_it
     def end_conversation(self, input_json: dict[str, Any]) -> dict[str, Any]:
         if(self.__talk):
             self.__talk.end()

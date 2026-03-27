@@ -90,6 +90,14 @@ class mantella_route(routeable):
                         reply = self.__game.player_input(received_json)
                     case comm_consts.KEY_REQUESTTYPE_ENDCONVERSATION:
                         reply = self.__game.end_conversation(received_json)
+                    case comm_consts.KEY_REQUESTTYPE_REDO:
+                        reply = self.__game.redo_response(received_json)
+                    case comm_consts.KEY_REQUESTTYPE_DIRECT:
+                        reply = self.__game.direct_npcs(received_json)
+                    case comm_consts.KEY_REQUESTTYPE_RESUME:
+                        reply = self.__game.resume_conversation(received_json)
+                    case comm_consts.KEY_REQUESTTYPE_NSFW_TOGGLE:
+                        reply = self.__game.nsfw_toggle(received_json)
                     case comm_consts.KEY_REQUESTTYPE_REDOSUMMARY:
                         reply = self.__game.redo_summary(received_json)
                     case _:

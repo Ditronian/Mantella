@@ -242,67 +242,10 @@ class conversation:
             text = new_message.text
             logging.log(23, f"Text passed to NPC: {text}")
 
-            # Check for special keywords BEFORE generating player voiceline or adding to messages
-            # This prevents TTS generation for command keywords
-            is_resume = self.__should_resume_conversation(text)
-            redo_guidance = self.__should_redo_response(text)
-            direct_instruction = self.__should_direct_npc(text)
-            nsfw_toggle = self.__should_toggle_nsfw(text)
-
-            # Only generate player voiceline if this isn't a special command
-            # Note: redo_guidance can be None (not a redo), "" (redo without guidance), or a string (redo with guidance)
-            if not is_resume and redo_guidance is None and direct_instruction is None and nsfw_toggle is None:
-                player_voiceline = self.__get_player_voiceline(player_character, player_text)
-            else:
-                player_voiceline = None  # No voiceline for command keywords
+            player_voiceline = self.__get_player_voiceline(player_character, player_text)
 
             # Now add message to thread
             self.__messages.add_message(new_message)
-
-        # Check if player wants to resume from previous conversation history
-        if self.__should_resume_conversation(text):
-            logging.info("Resume conversation keyword detected. Loading previous conversation history...")
-            self.__load_previous_conversation_history()
-            # Remove the "restart" message from the thread since it's not part of the actual conversation
-            # We need to remove the message we just added
-            # For now, just mark it as system-generated so it doesn't get saved
-            new_message.is_system_generated_message = True
-            # Don't start generation - just return so game can continue
-            return player_text, events_need_updating, player_voiceline
-
-        # Check if player wants to redo the last NPC response
-        # redo_guidance is None if not a redo, "" if redo without guidance, or a string if redo with guidance
-        if redo_guidance is not None:
-            if redo_guidance:
-                logging.info(f"Redo command detected with guidance: {redo_guidance}")
-            else:
-                logging.info("Redo command detected (no specific guidance)")
-            # Mark the original "Redo: ..." message as system-generated so it doesn't get saved
-            new_message.is_system_generated_message = True
-            # Execute the redo
-            if self.__redo_last_response(redo_guidance, player_character.name if player_character else ""):
-                # Start new generation with the redo directive
-                self.__start_generating_npc_sentences()
-            # Return so game can continue
-            return player_text, events_need_updating, player_voiceline
-
-        # Check if player is giving direct instructions to NPCs
-        if direct_instruction is not None:
-            logging.info(f"Direct command detected: {direct_instruction}")
-            # Mark the original "Direct: ..." message as system-generated so it doesn't get saved
-            new_message.is_system_generated_message = True
-            # Add the director's instruction
-            if self.__add_direct_instruction(direct_instruction, player_character.name if player_character else ""):
-                # Start new generation with the direct instruction
-                self.__start_generating_npc_sentences()
-            # Return so game can continue
-            return player_text, events_need_updating, player_voiceline
-
-        # Check if player is toggling NSFW mode
-        if nsfw_toggle is not None:
-            new_message.is_system_generated_message = True
-            self.__toggle_nsfw_mode(nsfw_toggle == "on")
-            return player_text, events_need_updating, player_voiceline
 
         ejected_npc = self.__does_dismiss_npc_from_conversation(text)
         if ejected_npc:
@@ -314,6 +257,42 @@ class conversation:
             self.__start_generating_npc_sentences()
 
         return player_text, events_need_updating, player_voiceline
+
+    def redo_response(self, guidance: str) -> bool:
+        """Redo the last NPC response with optional guidance (called from Director menu via game_manager)"""
+        with self.__generation_start_lock:
+            self.__stop_generation()
+            self.__sentences.clear()
+            player_character = self.__context.npcs_in_conversation.get_player_character()
+            player_name = player_character.name if player_character else ""
+            if self.__redo_last_response(guidance, player_name):
+                self.__start_generating_npc_sentences()
+                return True
+        return False
+
+    def direct_npcs(self, instruction: str) -> bool:
+        """Send a director's instruction to guide NPC behavior (called from Director menu via game_manager)"""
+        with self.__generation_start_lock:
+            self.__stop_generation()
+            self.__sentences.clear()
+            player_character = self.__context.npcs_in_conversation.get_player_character()
+            player_name = player_character.name if player_character else ""
+            if self.__add_direct_instruction(instruction, player_name):
+                self.__start_generating_npc_sentences()
+                return True
+        return False
+
+    def resume_conversation(self) -> bool:
+        """Load previous conversation history (called from Director menu via game_manager)"""
+        with self.__generation_start_lock:
+            self.__stop_generation()
+            self.__sentences.clear()
+            self.__load_previous_conversation_history()
+            return True
+
+    def toggle_nsfw(self, enable: bool):
+        """Toggle NSFW mode on or off (called from Director menu via game_manager)"""
+        self.__toggle_nsfw_mode(enable)
 
     def __get_mic_prompt(self):
         mic_prompt = f"This is a conversation with {self.__context.get_character_names_as_text(False)} in {self.__context.location}."
@@ -558,51 +537,6 @@ class conversation:
         # check if user is ending conversation
         return Transcriber.activation_name_exists(transcript_cleaned, self.__end_conversation_keywords)
 
-    def __should_resume_conversation(self, last_user_text: str) -> bool:
-        """Checks if the player input is exactly the resume conversation keyword
-
-        Args:
-            last_user_text (str): the text to check
-
-        Returns:
-            bool: true if player wants to resume from previous history, false otherwise
-        """
-        # Get the configured keyword and clean both for comparison
-        resume_keyword = self.__context.config.resume_conversation_keyword.strip().lower()
-        transcript_cleaned = utils.clean_text(last_user_text).strip().lower()
-
-        # Must be an exact match - no extra words allowed
-        return transcript_cleaned == resume_keyword
-
-    def __should_redo_response(self, last_user_text: str) -> str | None:
-        """Checks if the player input is a redo command and extracts the guidance
-
-        Args:
-            last_user_text (str): the text to check
-
-        Returns:
-            str | None: the guidance text (can be empty string if no guidance provided), or None if not a redo command
-        """
-        import re
-
-        # Get the configured keyword
-        redo_keyword = self.__context.config.redo_conversation_keyword.strip().lower()
-
-        # Pattern 1: "redo: guidance text here" (with guidance)
-        pattern_with_guidance = rf"^{re.escape(redo_keyword)}:\s*(.+)$"
-        match = re.match(pattern_with_guidance, last_user_text.strip(), re.IGNORECASE)
-        if match:
-            guidance = match.group(1).strip()
-            return guidance
-
-        # Pattern 2: just "redo" with optional colon but no guidance (redo without guidance)
-        pattern_no_guidance = rf"^{re.escape(redo_keyword)}:?\s*$"
-        match = re.match(pattern_no_guidance, last_user_text.strip(), re.IGNORECASE)
-        if match:
-            return ""  # Empty string means redo without guidance
-
-        return None  # Not a redo command at all
-
     def __redo_last_response(self, guidance: str, player_name: str) -> bool:
         """Removes the last NPC response batch and adds redo directive
 
@@ -642,46 +576,6 @@ class conversation:
 
         logging.info(f"Added redo directive{' with guidance: ' + guidance if guidance else ' (no specific guidance)'}")
         return True
-
-    def __should_direct_npc(self, last_user_text: str) -> str | None:
-        """Checks if the player input is a direct command and extracts the instruction
-
-        Args:
-            last_user_text (str): the text to check
-
-        Returns:
-            str | None: the instruction text, or None if not a direct command
-        """
-        import re
-
-        # Get the configured keyword
-        direct_keyword = self.__context.config.direct_conversation_keyword.strip().lower()
-
-        # Pattern: "direct: instruction text here" (requires colon and instruction)
-        pattern = rf"^{re.escape(direct_keyword)}:\s*(.+)$"
-        match = re.match(pattern, last_user_text.strip(), re.IGNORECASE)
-        if match:
-            instruction = match.group(1).strip()
-            return instruction
-
-        return None  # Not a direct command
-
-    def __should_toggle_nsfw(self, last_user_text: str) -> str | None:
-        """Checks if the player input is an NSFW toggle command
-
-        Args:
-            last_user_text (str): the text to check
-
-        Returns:
-            str | None: "on" or "off" if matched, None otherwise
-        """
-        import re
-        nsfw_keyword = self.__context.config.nsfw_keyword.strip().lower()
-        pattern = rf"^{re.escape(nsfw_keyword)}\s+(on|off)\s*$"
-        match = re.match(pattern, last_user_text.strip(), re.IGNORECASE)
-        if match:
-            return match.group(1).lower()
-        return None
 
     def __toggle_nsfw_mode(self, enable: bool):
         """Toggles NSFW mode on or off, swapping the model and system prompt

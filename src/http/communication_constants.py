@@ -80,6 +80,15 @@ class communication_constants:
     KEY_REDOSUMMARY_WORLDID: str = PREFIX + "redo_summary_world_id"
     KEY_REPLYTYPE_REDOSUMMARY_COMPLETED: str = PREFIX + "redo_summary_completed"
 
+    # Director Directives
+    KEY_REQUESTTYPE_REDO: str = PREFIX + "redo"
+    KEY_REQUESTTYPE_DIRECT: str = PREFIX + "direct"
+    KEY_REQUESTTYPE_RESUME: str = PREFIX + "resume"
+    KEY_REQUESTTYPE_NSFW_TOGGLE: str = PREFIX + "nsfw_toggle"
+    KEY_REDO_GUIDANCE: str = PREFIX + "redo_guidance"
+    KEY_DIRECT_INSTRUCTION: str = PREFIX + "direct_instruction"
+    KEY_NSFW_ENABLE: str = PREFIX + "nsfw_enable"
+
     ACTION_NPC_OFFENDED: str = PREFIX + "npc_offended"
     ACTION_NPC_FORGIVEN: str = PREFIX + "npc_forgiven"
     ACTION_NPC_FOLLOW: str = PREFIX + "npc_follow"
