@@ -5,6 +5,7 @@ from src.config.types.config_value_int import ConfigValueInt
 from src.config.types.config_value_float import ConfigValueFloat
 from src.config.types.config_value_string import ConfigValueString
 from src.config.types.config_value_multi_selection import ConfigValueMultiSelection
+from src.config.types.config_value_selection import ConfigValueSelection
 
 
 class OtherDefinitions:

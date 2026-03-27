@@ -188,14 +188,6 @@ class GameStateManager:
         return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
 
     @utils.time_it
-    def resume_conversation(self, input_json: dict[str, Any]) -> dict[str, Any]:
-        if not self.__talk:
-            return self.error_message("No running conversation.")
-        self.__first_line = True
-        self.__talk.resume_conversation()
-        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
-
-    @utils.time_it
     def nsfw_toggle(self, input_json: dict[str, Any]) -> dict[str, Any]:
         if not self.__talk:
             return self.error_message("No running conversation.")

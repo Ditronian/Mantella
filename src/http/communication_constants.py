@@ -83,7 +83,6 @@ class communication_constants:
     # Director Directives
     KEY_REQUESTTYPE_REDO: str = PREFIX + "redo"
     KEY_REQUESTTYPE_DIRECT: str = PREFIX + "direct"
-    KEY_REQUESTTYPE_RESUME: str = PREFIX + "resume"
     KEY_REQUESTTYPE_NSFW_TOGGLE: str = PREFIX + "nsfw_toggle"
     KEY_REDO_GUIDANCE: str = PREFIX + "redo_guidance"
     KEY_DIRECT_INSTRUCTION: str = PREFIX + "direct_instruction"

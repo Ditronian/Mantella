@@ -19,7 +19,7 @@ class TTSProviderRegistry:
 
     def get_provider(self, provider_name: str = "") -> ttsable:
         """Get TTS provider by name. Empty string returns the default."""
-        name = provider_name.strip().lower() if provider_name else self._default_provider_name
+        name = provider_name.strip().lower() if isinstance(provider_name, str) and provider_name else self._default_provider_name
         if name not in self._providers:
             self._providers[name] = self._create_provider(name)
         return self._providers[name]

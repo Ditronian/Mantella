@@ -106,6 +106,11 @@ class conversation:
         if self.__context.get_custom_context_value("is_imaginary"):
             self.__conversation_type = imaginary(self.__context.config)
 
+        # Resume previous conversation if flagged by the game (Director menu → Resume Conversation)
+        if self.__context.get_custom_context_value("resume_conversation"):
+            self.__load_previous_conversation_history()
+            self.__context.clear_custom_context_value("resume_conversation")
+
         # Check radiant topic for NSFW keyword before generating greeting
         if isinstance(self.__conversation_type, radiant):
             radiant_topic = self.__context.get_custom_context_value("radiant_topic")
@@ -281,14 +286,6 @@ class conversation:
                 self.__start_generating_npc_sentences()
                 return True
         return False
-
-    def resume_conversation(self) -> bool:
-        """Load previous conversation history (called from Director menu via game_manager)"""
-        with self.__generation_start_lock:
-            self.__stop_generation()
-            self.__sentences.clear()
-            self.__load_previous_conversation_history()
-            return True
 
     def toggle_nsfw(self, enable: bool):
         """Toggle NSFW mode on or off (called from Director menu via game_manager)"""

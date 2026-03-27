@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import Any, Hashable
@@ -74,23 +75,21 @@ class mantella_route(routeable):
                         # nothing needs to be done for this request aside from self._can_route_be_used() being triggered
                         reply = {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTTYPE_INITCOMPLETED}
                     case comm_consts.KEY_REQUESTTYPE_STARTCONVERSATION:
-                        reply = self.__game.start_conversation(received_json)
+                        reply = await asyncio.to_thread(self.__game.start_conversation, received_json)
                     case comm_consts.KEY_REQUESTTYPE_CONTINUECONVERSATION:
-                        reply = self.__game.continue_conversation(received_json)
+                        reply = await asyncio.to_thread(self.__game.continue_conversation, received_json)
                     case comm_consts.KEY_REQUESTTYPE_PLAYERINPUT:
-                        reply = self.__game.player_input(received_json)
+                        reply = await asyncio.to_thread(self.__game.player_input, received_json)
                     case comm_consts.KEY_REQUESTTYPE_ENDCONVERSATION:
-                        reply = self.__game.end_conversation(received_json)
+                        reply = await asyncio.to_thread(self.__game.end_conversation, received_json)
                     case comm_consts.KEY_REQUESTTYPE_REDO:
-                        reply = self.__game.redo_response(received_json)
+                        reply = await asyncio.to_thread(self.__game.redo_response, received_json)
                     case comm_consts.KEY_REQUESTTYPE_DIRECT:
-                        reply = self.__game.direct_npcs(received_json)
-                    case comm_consts.KEY_REQUESTTYPE_RESUME:
-                        reply = self.__game.resume_conversation(received_json)
+                        reply = await asyncio.to_thread(self.__game.direct_npcs, received_json)
                     case comm_consts.KEY_REQUESTTYPE_NSFW_TOGGLE:
-                        reply = self.__game.nsfw_toggle(received_json)
+                        reply = await asyncio.to_thread(self.__game.nsfw_toggle, received_json)
                     case comm_consts.KEY_REQUESTTYPE_REDOSUMMARY:
-                        reply = self.__game.redo_summary(received_json)
+                        reply = await asyncio.to_thread(self.__game.redo_summary, received_json)
                     case _:
                         reply = self.error_message(f"Request type '{request_type}' was not recognized")
             else:
