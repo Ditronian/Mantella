@@ -306,6 +306,8 @@ LLM parameter list must follow the Python dictionary format: https://www.w3schoo
             self.player_name_override: str = self.__definitions.get_string_value("player_name_override")
             self.voice_player_input: bool = self.__definitions.get_bool_value("voice_player_input")
             self.player_voice_model: str = self.__definitions.get_string_value("player_voice_model")
+            self.player_tts_provider: str = self.__definitions.get_string_value("player_tts_provider").strip().lower()
+            self.player_fish_audio_voice_id: str = self.__definitions.get_string_value("player_fish_audio_voice_id").strip()
 
             #HTTP
             self.port = self.__definitions.get_int_value("port")

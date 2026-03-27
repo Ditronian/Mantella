@@ -72,7 +72,22 @@ class OtherDefinitions:
     def get_player_voice_model() -> ConfigValue:
         player_voice_model_description = """The voice model for the player character to use if 'Voice player input' is activated."""
         return ConfigValueString("player_voice_model","Player Voice Model",player_voice_model_description,"",tags=[ConfigValueTag.advanced,ConfigValueTag.share_row])
-    
+
+    @staticmethod
+    def get_player_tts_provider() -> ConfigValue:
+        description = """The TTS service to use for the player character voice.
+                        Leave empty to use the global TTS service setting."""
+        return ConfigValueSelection("player_tts_provider", "Player TTS Provider", description, "",
+                                   ["", "Piper", "xVASynth", "XTTS", "Fish Audio"],
+                                   tags=[ConfigValueTag.advanced, ConfigValueTag.share_row])
+
+    @staticmethod
+    def get_player_fish_audio_voice_id() -> ConfigValue:
+        description = """The Fish.audio voice reference ID for the player character.
+                        Only used when Player TTS Provider is set to Fish Audio."""
+        return ConfigValueString("player_fish_audio_voice_id", "Player Fish Audio Voice ID", description, "",
+                                tags=[ConfigValueTag.advanced, ConfigValueTag.share_row])
+
     #HTTP
     @staticmethod
     def get_port_config_value() -> ConfigValue:

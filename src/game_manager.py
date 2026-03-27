@@ -363,6 +363,11 @@ class GameStateManager:
                         advanced_voice_model = str(row.get('advanced_voice_model', '') or '')
                         voice_accent = str(row.get('voice_accent', '') or '')
                         tts_provider = str(row.get('tts_provider', '') or '')
+                # Player-specific config overrides (take priority over CSV lookup)
+                if self.__config.player_tts_provider:
+                    tts_provider = self.__config.player_tts_provider
+                if self.__config.player_fish_audio_voice_id:
+                    advanced_voice_model = self.__config.player_fish_audio_voice_id
 
             return Character(base_id,
                             ref_id,
