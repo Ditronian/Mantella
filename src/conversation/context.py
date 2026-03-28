@@ -1,13 +1,15 @@
+from __future__ import annotations
 import logging
-from typing import Any, Hashable
+from typing import Any, Hashable, TYPE_CHECKING
 from src.conversation.action import action
 from src.http.communication_constants import communication_constants
 from src.conversation.conversation_log import conversation_log
 from src.characters_manager import Characters
 from src.remember.remembering import remembering
-from src.remember.character_developments import CharacterDevelopments
-from src.remember.world_events import WorldEvents
 from src import utils
+if TYPE_CHECKING:
+    from src.remember.character_developments import CharacterDevelopments
+    from src.remember.world_events import WorldEvents
 from src.utils import get_time_group
 from src.character_manager import Character
 from src.config.config_loader import ConfigLoader
