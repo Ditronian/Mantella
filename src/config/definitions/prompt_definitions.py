@@ -17,14 +17,14 @@ class PromptDefinitions:
                                 "names",
                                 "names_w_player",
                                 "bio",
-                                "bios", 
+                                "bios",
                                 "trust",
                                 "equipment",
                                 "location",
                                 "weather",
-                                "time", 
-                                "time_group", 
-                                "language", 
+                                "time",
+                                "time_group",
+                                "language",
                                 "conversation_summary",
                                 "conversation_summaries",
                                 "actions",
@@ -157,7 +157,7 @@ class PromptDefinitions:
                                     Here are their backgrounds:
                                     {bios}
                                     {equipment}
-                                    And here are their conversation histories: 
+                                    And here are their conversation histories:
                                     {conversation_summaries}
                                     The time is {time} {time_group}.
                                     {weather}
@@ -173,7 +173,7 @@ class PromptDefinitions:
         skyrim_radiant_prompt = """The following is a conversation in {location} in Skyrim between {names}.
                                     {world_events}
                                     Here are their backgrounds:
-                                    {bios}                                    
+                                    {bios}
                                     {conversation_summaries}
                                     The time is {time} {time_group}.
                                     {weather}
@@ -219,7 +219,7 @@ class PromptDefinitions:
     def get_fallout4_multi_npc_prompt_config_value() -> ConfigValue:
         fallout4_multi_npc_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names_w_player}. {world_events}
                             Here are their backgrounds:
-                            {bios} 
+                            {bios}
                             And here are their conversation histories: {conversation_summaries} 
                             The time is {time} {time_group}.
                             You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'. 
@@ -232,7 +232,7 @@ class PromptDefinitions:
     @staticmethod
     def get_fallout4_radiant_prompt_config_value() -> ConfigValue:
         fallout4_radiant_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names}. {world_events}
-                            Here are their backgrounds: {bios} 
+                            Here are their backgrounds: {bios}
                             And here are their conversation histories: {conversation_summaries} 
                             The time is {time} {time_group}.
                             You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'. 

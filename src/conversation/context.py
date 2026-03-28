@@ -348,7 +348,7 @@ class context:
     
     @utils.time_it
     def __get_bios_text(self) -> str:
-        """Gets the bios of all characters in the conversation
+        """Gets the bios of all characters in the conversation, with any character developments appended per-character.
 
         Returns:
             str: the bios concatenated together into a single string
@@ -356,9 +356,23 @@ class context:
         bio_descriptions = []
         for character in self.get_characters_excluding_player().get_all_characters():
             if len(self.__npcs_in_conversation) == 1:
-                bio_descriptions.append(character.bio)
+                entry = character.bio
             else:
-                bio_descriptions.append(f"{character.name}: {character.bio}")
+                entry = f"{character.name}: {character.bio}"
+            if self.__character_developments:
+                devs = self.__character_developments.load(character, self.__world_id)
+                if devs:
+                    bullet_list = '\n'.join(f'- {d}' for d in devs)
+                    entry += (
+                        f"\n\n{character.name}'s Character Developments:\n"
+                        f"The following are confirmed developments to {character.name}'s character "
+                        f"that have occurred during gameplay. These represent permanent changes and "
+                        f"TAKE PRECEDENCE over the background information above wherever they conflict. "
+                        f"Treat each as an established fact about who {character.name} is NOW:\n"
+                        f"{bullet_list}\n\n"
+                        f"[End of character developments]"
+                    )
+            bio_descriptions.append(entry)
         return "\n".join(bio_descriptions)
     
     @utils.time_it
@@ -426,27 +440,19 @@ class context:
         else:
             self.__prev_game_time = None, time_group
         conversation_summaries = self.__rememberer.get_prompt_text(self.get_characters_excluding_player(), self.__world_id)
-        developments_text = ""
-        if self.__character_developments:
-            developments_text = self.__character_developments.get_prompt_text(self.get_characters_excluding_player(), self.__world_id)
         world_events_text = ""
         if self.__world_events:
             world_events_text = self.__world_events.get_prompt_text(self.__world_id)
         actions = self.__get_action_texts(actions_for_prompt)
 
-        bios_with_devs = bios + "\n\n" + developments_text if developments_text else bios
-        devs_only = developments_text
-
         removal_content: list[tuple[str, str, str]] = [
-            (bios_with_devs, conversation_summaries, world_events_text),  # Everything
-            (bios_with_devs, "", world_events_text),                       # Drop summaries
-            (devs_only, "", world_events_text),                            # Drop bios
-            ("", "", world_events_text),                                   # Drop developments
-            ("", "", ""),                                                   # Emergency
+            (bios, conversation_summaries, world_events_text),  # Everything
+            (bios, "", world_events_text),                       # Drop summaries
+            ("", "", world_events_text),                          # Drop bios
+            ("", "", ""),                                          # Emergency
         ]
         have_bios_been_dropped = False
         have_summaries_been_dropped = False
-        have_developments_been_dropped = False
         have_world_events_been_dropped = False
         logging.log(23, f'Maximum size of prompt is {self.__client.token_limit} x {self.TOKEN_LIMIT_PERCENT} = {int(round(self.__client.token_limit * self.TOKEN_LIMIT_PERCENT, 0))} tokens.')
         for tier, content in enumerate(removal_content):
@@ -477,8 +483,6 @@ class context:
                 elif tier == 1:
                     have_bios_been_dropped = True
                 elif tier == 2:
-                    have_developments_been_dropped = True
-                elif tier == 3:
                     have_world_events_been_dropped = True
             else:
                 break
@@ -486,11 +490,9 @@ class context:
         max_tokens = int(round(self.__client.token_limit * self.TOKEN_LIMIT_PERCENT, 0))
         logging.log(23, f'Prompt sent to LLM ({self.__client.get_count_tokens(result)} tokens): {result.strip()}')
         if have_world_events_been_dropped:
-            logging.log(logging.WARNING, f'All context (bios, developments, world events, summaries) could not fit into the maximum prompt size of {max_tokens} tokens. NPCs will have no knowledge of who they are or the world state.')
-        elif have_developments_been_dropped:
-            logging.log(logging.WARNING, f'Bios, character developments, and summaries could not fit into the maximum prompt size of {max_tokens} tokens. World events are preserved, but NPCs will not remember previous conversations and will have limited knowledge of who they are.')
+            logging.log(logging.WARNING, f'All context (bios, world events, summaries) could not fit into the maximum prompt size of {max_tokens} tokens. NPCs will have no knowledge of who they are or the world state.')
         elif have_bios_been_dropped:
-            logging.log(logging.WARNING, f'Bios and summaries could not fit into the maximum prompt size of {max_tokens} tokens. Character developments and world events are preserved, but NPCs will not remember previous conversations and will have limited bio knowledge.')
+            logging.log(logging.WARNING, f'Bios and summaries could not fit into the maximum prompt size of {max_tokens} tokens. NPCs will not remember previous conversations and will have limited knowledge of who they are.')
         elif have_summaries_been_dropped:
             logging.log(logging.WARNING, f'The summaries of the NPCs selected could not fit into the maximum prompt size of {max_tokens} tokens. NPCs will not remember previous conversations.')
         return result

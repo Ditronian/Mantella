@@ -37,12 +37,5 @@ class WorldEvents:
     def get_prompt_text(self, world_id: str) -> str:
         events = self.load(world_id)
         if not events:
-            bullet_list = "- None"
-        else:
-            bullet_list = '\n'.join(f'- {e}' for e in events)
-        return (
-            "Custom World Context:\n"
-            "The following is context about the game world that differs from normal lore.\n"
-            "These are critical game events that should be accounted for in responses.\n"
-            f"{bullet_list}"
-        )
+            return ""
+        return '\n'.join(f'- {e}' for e in events)
