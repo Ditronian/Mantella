@@ -174,7 +174,7 @@ class GameStateManager:
         guidance = input_json.get(comm_consts.KEY_REDO_GUIDANCE, '')
         self.__first_line = True
         self.__talk.redo_response(guidance)
-        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
+        return self.__wait_for_sentence()
 
     @utils.time_it
     def direct_npcs(self, input_json: dict[str, Any]) -> dict[str, Any]:
@@ -185,7 +185,7 @@ class GameStateManager:
             return self.error_message("Direct instruction cannot be empty.")
         self.__first_line = True
         self.__talk.direct_npcs(instruction)
-        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_NPCTALK}
+        return self.__wait_for_sentence()
 
     @utils.time_it
     def nsfw_toggle(self, input_json: dict[str, Any]) -> dict[str, Any]:
@@ -231,6 +231,30 @@ class GameStateManager:
         return self.__game.modify_sentence_text_for_game(text_to_abbreviate)
 
     ##### utils #######
+
+    def __wait_for_sentence(self) -> dict[str, Any]:
+        """Wait for the next sentence from the conversation (used by redo/direct handlers)."""
+        topicInfoID = 1
+        while True:
+            replyType, sentence_to_play = self.__talk.continue_conversation()
+            if replyType == comm_consts.KEY_REQUESTTYPE_TTS:
+                reply = self.player_input({"mantella_context": {}, "mantella_player_input": "", "mantella_request_type": "mantella_player_input"})
+                self.__first_line = False
+                continue
+            else:
+                reply: dict[str, Any] = {comm_consts.KEY_REPLYTYPE: replyType}
+                break
+        if sentence_to_play:
+            if not sentence_to_play.error_message:
+                self.__game.prepare_sentence_for_game(sentence_to_play, self.__talk.context, self.__config, topicInfoID, self.__first_line)
+                reply[comm_consts.KEY_REPLYTYPE_NPCTALK] = self.sentence_to_json(sentence_to_play, topicInfoID)
+                self.__first_line = False
+            else:
+                logging.error(f"Error in sentence generation: {sentence_to_play.error_message}")
+                self.__game.prepare_sentence_for_game(sentence_to_play, self.__talk.context, self.__config, topicInfoID, self.__first_line)
+                reply[comm_consts.KEY_REPLYTYPE_NPCTALK] = self.sentence_to_json(sentence_to_play, topicInfoID)
+                self.__first_line = False
+        return reply
 
     @utils.time_it
     def __update_context(self,  json: dict[str, Any]):

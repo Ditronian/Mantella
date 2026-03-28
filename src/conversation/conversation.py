@@ -270,9 +270,10 @@ class conversation:
             self.__sentences.clear()
             player_character = self.__context.npcs_in_conversation.get_player_character()
             player_name = player_character.name if player_character else ""
-            if self.__redo_last_response(guidance, player_name):
-                self.__start_generating_npc_sentences()
-                return True
+            should_generate = self.__redo_last_response(guidance, player_name)
+        if should_generate:
+            self.__start_generating_npc_sentences()
+            return True
         return False
 
     def direct_npcs(self, instruction: str) -> bool:
@@ -282,9 +283,10 @@ class conversation:
             self.__sentences.clear()
             player_character = self.__context.npcs_in_conversation.get_player_character()
             player_name = player_character.name if player_character else ""
-            if self.__add_direct_instruction(instruction, player_name):
-                self.__start_generating_npc_sentences()
-                return True
+            should_generate = self.__add_direct_instruction(instruction, player_name)
+        if should_generate:
+            self.__start_generating_npc_sentences()
+            return True
         return False
 
     def toggle_nsfw(self, enable: bool):
