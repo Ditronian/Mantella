@@ -11,6 +11,7 @@ from src.output_manager import ChatManager
 from src.remember.remembering import remembering
 from src.remember.summaries import summaries
 from src.remember.character_developments import CharacterDevelopments
+from src.remember.world_events import WorldEvents
 from src.config.config_loader import ConfigLoader
 from src.llm.llm_client import LLMClient
 from src.conversation.conversation import conversation
@@ -38,6 +39,7 @@ class GameStateManager:
         self.__chat_manager: ChatManager = chat_manager
         self.__rememberer: remembering = summaries(game, config, client, language_info['language'])
         self.__character_developments: CharacterDevelopments = CharacterDevelopments(game)
+        self.__world_events: WorldEvents = WorldEvents(game)
         self.__talk: conversation | None = None
         self.__mic_input: bool = False
         self.__mic_ptt: bool = False # push-to-talk
@@ -78,7 +80,7 @@ class GameStateManager:
                 if input_json[comm_consts.KEY_INPUTTYPE] == comm_consts.KEY_INPUTTYPE_PTT:
                     self.__mic_ptt = True
                 
-        context_for_conversation = context(world_id, self.__config, self.__client, self.__rememberer, self.__character_developments, self.__language_info)
+        context_for_conversation = context(world_id, self.__config, self.__client, self.__rememberer, self.__character_developments, self.__world_events, self.__language_info)
         self.__talk = conversation(context_for_conversation, self.__chat_manager, self.__rememberer, self.__client, self.__stt, self.__mic_input, self.__mic_ptt)
         self.__update_context(input_json)
         self.__try_preload_voice_model()
@@ -515,6 +517,33 @@ class GameStateManager:
         except Exception as e:
             logging.error(f"Error in add_development: {e}")
             return self.error_message(f"Add development failed: {e}")
+
+    @utils.time_it
+    def add_world_event(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        """Add a global world event that applies to all conversations."""
+        try:
+            world_id = input_json.get(comm_consts.KEY_WORLDEVENT_WORLDID, "default")
+            world_id = self.WORLD_ID_CLEANSE_REGEX.sub("", world_id)
+
+            if hasattr(self.__config, "player_name_override"):
+                override_name = str(self.__config.player_name_override).strip()
+                if override_name:
+                    suffix = "1"
+                    m = regex.search(r"(\d+)$", world_id)
+                    if m:
+                        suffix = m.group(1)
+                    world_id = self.WORLD_ID_CLEANSE_REGEX.sub("", f"{override_name}{suffix}")
+
+            event_text = input_json.get(comm_consts.KEY_WORLDEVENT_TEXT, "")
+            if not event_text or not event_text.strip():
+                return self.error_message("World event text cannot be empty.")
+
+            self.__world_events.save(world_id, event_text.strip())
+            logging.info(f"World event added: {event_text.strip()}")
+            return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_WORLDEVENT_ADDED}
+        except Exception as e:
+            logging.error(f"Error in add_world_event: {e}")
+            return self.error_message(f"Add world event failed: {e}")
 
     def error_message(self, message: str) -> dict[str, Any]:
         return {

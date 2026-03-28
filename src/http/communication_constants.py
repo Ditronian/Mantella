@@ -86,6 +86,12 @@ class communication_constants:
     KEY_DEVELOPMENT_WORLDID: str = PREFIX + "development_world_id"
     KEY_REPLYTYPE_DEVELOPMENT_ADDED: str = PREFIX + "development_added"
 
+    # World Events
+    KEY_REQUESTTYPE_ADD_WORLD_EVENT: str = PREFIX + "add_world_event"
+    KEY_WORLDEVENT_TEXT: str = PREFIX + "world_event_text"
+    KEY_WORLDEVENT_WORLDID: str = PREFIX + "world_event_world_id"
+    KEY_REPLYTYPE_WORLDEVENT_ADDED: str = PREFIX + "world_event_added"
+
     # Director Directives
     KEY_REQUESTTYPE_REDO: str = PREFIX + "redo"
     KEY_REQUESTTYPE_DIRECT: str = PREFIX + "direct"

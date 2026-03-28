@@ -27,8 +27,9 @@ class PromptDefinitions:
                                 "language", 
                                 "conversation_summary",
                                 "conversation_summaries",
-                                "actions"]
-    
+                                "actions",
+                                "world_events"]
+
     ALLOWED_PROMPT_VARIABLES_IMAGINARY = [
                                 "player_name",
                                 "player_description",
@@ -39,7 +40,8 @@ class PromptDefinitions:
                                 "time_group",
                                 "language",
                                 "conversation_summary",
-                                "actions"]
+                                "actions",
+                                "world_events"]
 
     ALLOWED_PROMPT_VARIABLES_RADIANT = [
                                 "game",
@@ -55,7 +57,8 @@ class PromptDefinitions:
                                 "language",
                                 "conversation_summary",
                                 "conversation_summaries",
-                                "actions"]
+                                "actions",
+                                "world_events"]
 
     ALLOWED_REDO_VARIABLES_WITH_GUIDANCE = ["removed_content", "guidance"]
     ALLOWED_REDO_VARIABLES_WITHOUT_GUIDANCE = ["removed_content"]
@@ -81,8 +84,9 @@ class PromptDefinitions:
                                 player_description = a description of the player character (needs to be added in game or using the config value)
                                 player_equipment = a basic description of the equipment the player character carries
                                 equipment = a basic description of the equipment the NPCs carry
-                                actions = instructions for the LLM how to trigger actions"""
-    
+                                actions = instructions for the LLM how to trigger actions
+                                world_events = player-authored world context events that apply globally to all conversations"""
+
     BASE_RADIANT_DESCRIPTION = """The starting prompt sent to the LLM when a radiant conversation is started.
                                 The following are dynamic variables that need to be contained in curly brackets {}:
                                 name = the NPC's name
@@ -96,8 +100,9 @@ class PromptDefinitions:
                                 language = the selected language
                                 conversation_summary = reads the latest conversation summaries for the NPCs stored in data/conversations/NPC_Name/NPC_Name_summary_X.txt
                                 equipment = a basic description of the equipment the NPCs carry
-                                actions = instructions for the LLM to trigger actions"""
-        
+                                actions = instructions for the LLM to trigger actions
+                                world_events = player-authored world context events that apply globally to all conversations"""
+
     BASE_IMAGINARY_DESCRIPTION = """The starting prompt sent to the LLM for imaginary conversations (talking to an NPC who is not physically present).
                                 The following are dynamic variables that need to be contained in curly brackets {}:
                                 name = the NPC's name
@@ -109,7 +114,8 @@ class PromptDefinitions:
                                 conversation_summary = reads the latest conversation summaries for the NPC
                                 player_name = the name of the player character
                                 player_description = a description of the player character
-                                actions = instructions for the LLM how to trigger actions"""
+                                actions = instructions for the LLM how to trigger actions
+                                world_events = player-authored world context events that apply globally to all conversations"""
 
     class PromptChecker(ConfigValueConstraint[str]):
         def __init__(self, allowed_prompt_variables: list[str]) -> None:
@@ -129,7 +135,8 @@ class PromptDefinitions:
     
     @staticmethod
     def get_skyrim_prompt_config_value() -> ConfigValue:
-        skyrim_prompt_value = """You are {name}, and you live in Skyrim. This is your background: {bio}
+        skyrim_prompt_value = """You are {name}, and you live in Skyrim. {world_events}
+                                This is your background: {bio}
                                 Sometimes in-game events will be passed before the player response within brackets. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
                                 (The player picked up a pair of gloves)
                                 Who do you think these belong to?
@@ -146,7 +153,8 @@ class PromptDefinitions:
     @staticmethod
     def get_skyrim_multi_npc_prompt_config_value() -> ConfigValue:
         skyrim_multi_npc_prompt = """The following is a conversation in {location} in Skyrim between {names_w_player}. {player_name} {player_description} {player_equipment}
-                                    Here are their backgrounds: 
+                                    {world_events}
+                                    Here are their backgrounds:
                                     {bios}
                                     {equipment}
                                     And here are their conversation histories: 
@@ -163,7 +171,8 @@ class PromptDefinitions:
     @staticmethod
     def get_skyrim_radiant_prompt_config_value() -> ConfigValue:
         skyrim_radiant_prompt = """The following is a conversation in {location} in Skyrim between {names}.
-                                    Here are their backgrounds: 
+                                    {world_events}
+                                    Here are their backgrounds:
                                     {bios}                                    
                                     {conversation_summaries}
                                     The time is {time} {time_group}.
@@ -177,7 +186,8 @@ class PromptDefinitions:
 
     @staticmethod
     def get_imaginary_prompt_config_value() -> ConfigValue:
-        imaginary_prompt = """You are {name}, and you exist in the world of {game}. This is your background: {bio}
+        imaginary_prompt = """You are {name}, and you exist in the world of {game}. {world_events}
+                                This is your background: {bio}
                                 You are communicating with {player_name} through thought alone — as a voice in their mind, not a physical presence. {player_name} {player_description}
                                 Sometimes in-game events will be passed before the player response within brackets. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
                                 (The player picked up a pair of gloves)
@@ -192,7 +202,8 @@ class PromptDefinitions:
 
     @staticmethod
     def get_fallout4_prompt_config_value() -> ConfigValue:
-        fallout4_prompt = """You are {name}, and you live in the post-apocalyptic Commonwealth of Fallout. This is your background: {bio}
+        fallout4_prompt = """You are {name}, and you live in the post-apocalyptic Commonwealth of Fallout. {world_events}
+                            This is your background: {bio}
                             Sometimes in-game events will be passed before the player response within. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
                             (The player picked up a pair of gloves)
                             Who do you think these belong to?
@@ -206,7 +217,8 @@ class PromptDefinitions:
 
     @staticmethod
     def get_fallout4_multi_npc_prompt_config_value() -> ConfigValue:
-        fallout4_multi_npc_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names_w_player}. Here are their backgrounds: 
+        fallout4_multi_npc_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names_w_player}. {world_events}
+                            Here are their backgrounds:
                             {bios} 
                             And here are their conversation histories: {conversation_summaries} 
                             The time is {time} {time_group}.
@@ -219,7 +231,8 @@ class PromptDefinitions:
 
     @staticmethod
     def get_fallout4_radiant_prompt_config_value() -> ConfigValue:
-        fallout4_radiant_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names}. Here are their backgrounds: {bios} 
+        fallout4_radiant_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names}. {world_events}
+                            Here are their backgrounds: {bios} 
                             And here are their conversation histories: {conversation_summaries} 
                             The time is {time} {time_group}.
                             You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'. 
@@ -231,7 +244,8 @@ class PromptDefinitions:
     
     @staticmethod
     def get_nsfw_skyrim_prompt_config_value() -> ConfigValue:
-        nsfw_prompt = """You are {name}, and you live in Skyrim. This is your background: {bio}
+        nsfw_prompt = """You are {name}, and you live in Skyrim. {world_events}
+                                This is your background: {bio}
                                 Sometimes in-game events will be passed before the player response within brackets. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
                                 (The player picked up a pair of gloves)
                                 Who do you think these belong to?
@@ -250,6 +264,7 @@ class PromptDefinitions:
     @staticmethod
     def get_nsfw_skyrim_multi_npc_prompt_config_value() -> ConfigValue:
         nsfw_multi_prompt = """The following is a conversation in {location} in Skyrim between {names_w_player}. {player_name} {player_description} {player_equipment}
+                                    {world_events}
                                     Here are their backgrounds:
                                     {bios}
                                     {equipment}
@@ -269,6 +284,7 @@ class PromptDefinitions:
     @staticmethod
     def get_nsfw_skyrim_radiant_prompt_config_value() -> ConfigValue:
         nsfw_radiant_prompt = """The following is a conversation in {location} in Skyrim between {names}.
+                                    {world_events}
                                     Here are their backgrounds:
                                     {bios}
                                     {conversation_summaries}
@@ -285,7 +301,8 @@ class PromptDefinitions:
 
     @staticmethod
     def get_nsfw_fallout4_prompt_config_value() -> ConfigValue:
-        nsfw_prompt = """You are {name}, and you live in the post-apocalyptic Commonwealth of Fallout. This is your background: {bio}
+        nsfw_prompt = """You are {name}, and you live in the post-apocalyptic Commonwealth of Fallout. {world_events}
+                            This is your background: {bio}
                             Sometimes in-game events will be passed before the player response within. You cannot respond with brackets yourself, they only exist to give context. Here is an example:
                             (The player picked up a pair of gloves)
                             Who do you think these belong to?
@@ -300,7 +317,8 @@ class PromptDefinitions:
 
     @staticmethod
     def get_nsfw_fallout4_multi_npc_prompt_config_value() -> ConfigValue:
-        nsfw_multi_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names_w_player}. Here are their backgrounds:
+        nsfw_multi_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names_w_player}. {world_events}
+                            Here are their backgrounds:
                             {bios}
                             And here are their conversation histories: {conversation_summaries}
                             The time is {time} {time_group}.
@@ -315,7 +333,8 @@ class PromptDefinitions:
 
     @staticmethod
     def get_nsfw_fallout4_radiant_prompt_config_value() -> ConfigValue:
-        nsfw_radiant_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names}. Here are their backgrounds: {bios}
+        nsfw_radiant_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names}. {world_events}
+                            Here are their backgrounds: {bios}
                             And here are their conversation histories: {conversation_summaries}
                             The time is {time} {time_group}.
                             You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.

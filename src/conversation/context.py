@@ -6,6 +6,7 @@ from src.conversation.conversation_log import conversation_log
 from src.characters_manager import Characters
 from src.remember.remembering import remembering
 from src.remember.character_developments import CharacterDevelopments
+from src.remember.world_events import WorldEvents
 from src import utils
 from src.utils import get_time_group
 from src.character_manager import Character
@@ -18,7 +19,7 @@ class context:
     TOKEN_LIMIT_PERCENT: float = 0.45
 
     @utils.time_it
-    def __init__(self, world_id: str, config: ConfigLoader, client: LLMClient, rememberer: remembering, character_developments: CharacterDevelopments | None, language: dict[Hashable, str]) -> None:
+    def __init__(self, world_id: str, config: ConfigLoader, client: LLMClient, rememberer: remembering, character_developments: CharacterDevelopments | None, world_events: WorldEvents | None, language: dict[Hashable, str]) -> None:
         self.__world_id = world_id
         self.__hourly_time = config.hourly_time
         self.__prev_game_time: tuple[str | None, str] | None = None
@@ -27,6 +28,7 @@ class context:
         self.__client: LLMClient = client
         self.__rememberer: remembering = rememberer
         self.__character_developments: CharacterDevelopments | None = character_developments
+        self.__world_events: WorldEvents | None = world_events
         self.__language: dict[Hashable, str] = language
         self.__weather: str = ""
         self.__custom_context_values: dict[str, Any] = {}
@@ -425,15 +427,25 @@ class context:
         developments_text = ""
         if self.__character_developments:
             developments_text = self.__character_developments.get_prompt_text(self.get_characters_excluding_player(), self.__world_id)
+        world_events_text = ""
+        if self.__world_events:
+            world_events_text = self.__world_events.get_prompt_text(self.__world_id)
         actions = self.__get_action_texts(actions_for_prompt)
 
         bios_with_devs = bios + "\n\n" + developments_text if developments_text else bios
         devs_only = developments_text
 
-        removal_content: list[tuple[str, str]] = [(bios_with_devs, conversation_summaries),(bios_with_devs,""), (devs_only, ""),("","")]
+        removal_content: list[tuple[str, str, str]] = [
+            (bios_with_devs, conversation_summaries, world_events_text),  # Everything
+            (bios_with_devs, "", world_events_text),                       # Drop summaries
+            (devs_only, "", world_events_text),                            # Drop bios
+            ("", "", world_events_text),                                   # Drop developments
+            ("", "", ""),                                                   # Emergency
+        ]
         have_bios_been_dropped = False
         have_summaries_been_dropped = False
         have_developments_been_dropped = False
+        have_world_events_been_dropped = False
         logging.log(23, f'Maximum size of prompt is {self.__client.token_limit} x {self.TOKEN_LIMIT_PERCENT} = {int(round(self.__client.token_limit * self.TOKEN_LIMIT_PERCENT, 0))} tokens.')
         for tier, content in enumerate(removal_content):
             result = prompt.format(
@@ -454,7 +466,8 @@ class context:
                 language=self.__language['language'],
                 conversation_summary=content[1],
                 conversation_summaries=content[1],
-                actions = actions
+                actions = actions,
+                world_events = content[2]
                 )
             if self.__client.is_too_long(result, self.TOKEN_LIMIT_PERCENT):
                 if tier == 0:
@@ -463,15 +476,19 @@ class context:
                     have_bios_been_dropped = True
                 elif tier == 2:
                     have_developments_been_dropped = True
+                elif tier == 3:
+                    have_world_events_been_dropped = True
             else:
                 break
 
         max_tokens = int(round(self.__client.token_limit * self.TOKEN_LIMIT_PERCENT, 0))
         logging.log(23, f'Prompt sent to LLM ({self.__client.get_count_tokens(result)} tokens): {result.strip()}')
-        if have_developments_been_dropped:
-            logging.log(logging.WARNING, f'Bios, character developments, and summaries could not fit into the maximum prompt size of {max_tokens} tokens. NPCs will not remember previous conversations and will have limited knowledge of who they are.')
+        if have_world_events_been_dropped:
+            logging.log(logging.WARNING, f'All context (bios, developments, world events, summaries) could not fit into the maximum prompt size of {max_tokens} tokens. NPCs will have no knowledge of who they are or the world state.')
+        elif have_developments_been_dropped:
+            logging.log(logging.WARNING, f'Bios, character developments, and summaries could not fit into the maximum prompt size of {max_tokens} tokens. World events are preserved, but NPCs will not remember previous conversations and will have limited knowledge of who they are.')
         elif have_bios_been_dropped:
-            logging.log(logging.WARNING, f'Bios and summaries could not fit into the maximum prompt size of {max_tokens} tokens. Character developments are preserved, but NPCs will not remember previous conversations and will have limited bio knowledge.')
+            logging.log(logging.WARNING, f'Bios and summaries could not fit into the maximum prompt size of {max_tokens} tokens. Character developments and world events are preserved, but NPCs will not remember previous conversations and will have limited bio knowledge.')
         elif have_summaries_been_dropped:
             logging.log(logging.WARNING, f'The summaries of the NPCs selected could not fit into the maximum prompt size of {max_tokens} tokens. NPCs will not remember previous conversations.')
         return result
