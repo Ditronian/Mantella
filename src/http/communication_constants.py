@@ -80,6 +80,12 @@ class communication_constants:
     KEY_REDOSUMMARY_WORLDID: str = PREFIX + "redo_summary_world_id"
     KEY_REPLYTYPE_REDOSUMMARY_COMPLETED: str = PREFIX + "redo_summary_completed"
 
+    # Character Developments
+    KEY_REQUESTTYPE_ADD_DEVELOPMENT: str = PREFIX + "add_development"
+    KEY_DEVELOPMENT_TEXT: str = PREFIX + "development_text"
+    KEY_DEVELOPMENT_WORLDID: str = PREFIX + "development_world_id"
+    KEY_REPLYTYPE_DEVELOPMENT_ADDED: str = PREFIX + "development_added"
+
     # Director Directives
     KEY_REQUESTTYPE_REDO: str = PREFIX + "redo"
     KEY_REQUESTTYPE_DIRECT: str = PREFIX + "direct"
