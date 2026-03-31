@@ -143,9 +143,10 @@ class conversation:
             self.__initiate_reload_conversation()
 
         # Check for pending direction (sent immediately via set_direction HTTP request)
-        if self.__pending_direction:
+        with self.__generation_start_lock:
             direction = self.__pending_direction
             self.__pending_direction = None
+        if direction:
             direction = self.__check_and_strip_nsfw_from_direction(direction)
             logging.info(f"Pending direction detected: {direction}")
             with self.__generation_start_lock:
@@ -170,8 +171,9 @@ class conversation:
 
         # interrupt response if player has spoken
         if self.__stt and self.__stt.has_player_spoken:
-            self.__stop_generation()
-            self.__sentences.clear()
+            with self.__generation_start_lock:
+                self.__stop_generation()
+                self.__sentences.clear()
             self.__is_player_interrupting = True
             return comm_consts.KEY_REQUESTTYPE_TTS, None
 
@@ -194,8 +196,9 @@ class conversation:
                 if self.__pending_direction:
                     break  # Exit wait early; direction will be caught on next call
                 if self.__stt and self.__stt.has_player_spoken:
-                    self.__stop_generation()
-                    self.__sentences.clear()
+                    with self.__generation_start_lock:
+                        self.__stop_generation()
+                        self.__sentences.clear()
                     self.__is_player_interrupting = True
                     return comm_consts.KEY_REQUESTTYPE_TTS, None
                 time.sleep(0.01)
@@ -204,9 +207,10 @@ class conversation:
             return comm_consts.KEY_REPLYTYPE_NPCTALK, next_sentence
         else:
             # Check for pending direction before auto-continuation (catches sentinel-unblocked case)
-            if self.__pending_direction:
+            with self.__generation_start_lock:
                 direction = self.__pending_direction
                 self.__pending_direction = None
+            if direction:
                 direction = self.__check_and_strip_nsfw_from_direction(direction)
                 logging.info(f"Pending direction detected (post-queue): {direction}")
                 with self.__generation_start_lock:
@@ -327,7 +331,8 @@ class conversation:
         This is called from a separate HTTP request thread and must not manipulate the queue directly.
         Instead, it sets a flag and injects a sentinel to wake up any blocking queue get.
         """
-        self.__pending_direction = instruction
+        with self.__generation_start_lock:
+            self.__pending_direction = instruction
         # Inject an empty sentinel to unblock any waiting get_next_sentence()
         speaker = self.__context.npcs_in_conversation.last_added_character
         if speaker:
@@ -340,7 +345,31 @@ class conversation:
 
     def toggle_nsfw(self, enable: bool):
         """Toggle NSFW mode on or off (called from Director menu via game_manager)"""
-        self.__toggle_nsfw_mode(enable)
+        with self.__generation_start_lock:
+            self.__stop_generation()
+            self.__sentences.clear()
+            self.__toggle_nsfw_mode(enable)
+
+    def reset_pipeline(self):
+        """Nuclear reset: kill generation, clear queue, reset all flags.
+        Called via Director hotkey when conversation is stuck."""
+        logging.warning("Pipeline reset requested — killing generation and clearing state")
+        with self.__generation_start_lock:
+            self.__output_manager.stop_generation()
+            thread = self.__generation_thread
+            if thread and thread.is_alive():
+                thread.join(timeout=5.0)
+            self.__generation_thread = None
+            self.__sentences.clear()
+            self.__sentences.is_more_to_come = False
+            self.__pending_direction = None
+        # Inject a sentinel so any blocked get_next_sentence() wakes up
+        speaker = self.__context.npcs_in_conversation.last_added_character
+        if speaker:
+            self.__sentences.put(sentence(
+                sentence_content(speaker, "", SentenceTypeEnum.SPEECH, True), "", 0
+            ))
+        logging.warning("Pipeline reset complete — conversation ready for next input")
 
     def __get_mic_prompt(self):
         mic_prompt = f"This is a conversation with {self.__context.get_character_names_as_text(False)} in {self.__context.location}."

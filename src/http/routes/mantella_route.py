@@ -111,6 +111,8 @@ class mantella_route(routeable):
                         reply = await asyncio.to_thread(self.__game.add_development, received_json)
                     case comm_consts.KEY_REQUESTTYPE_ADD_WORLD_EVENT:
                         reply = await asyncio.to_thread(self.__game.add_world_event, received_json)
+                    case comm_consts.KEY_REQUESTTYPE_RESET_PIPELINE:
+                        reply = await asyncio.to_thread(self.__game.reset_pipeline, received_json)
                     case _:
                         reply = self.error_message(f"Request type '{request_type}' was not recognized")
             else:

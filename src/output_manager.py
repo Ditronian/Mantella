@@ -1,5 +1,5 @@
 import asyncio
-from threading import Lock
+from threading import Event, Lock
 import wave
 import logging
 import time
@@ -36,7 +36,7 @@ class ChatManager:
         self.__tts_registry: TTSProviderRegistry = tts_registry
         self.__client: AIClient = client
         self.__is_generating: bool = False
-        self.__stop_generation = asyncio.Event()
+        self.__stop_generation = Event()
         self.__tts_access_lock = Lock()
         self.__is_first_sentence: bool = False
         self.__end_of_sentence_chars = ['.', '?', '!', ';', '。', '？', '！', '；', '：']

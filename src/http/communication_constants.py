@@ -101,6 +101,8 @@ class communication_constants:
     KEY_DIRECT_INSTRUCTION: str = PREFIX + "direct_instruction"
     KEY_NSFW_ENABLE: str = PREFIX + "nsfw_enable"
     KEY_REPLYTYPE_DIRECTIONACCEPTED: str = PREFIX + "direction_accepted"
+    KEY_REQUESTTYPE_RESET_PIPELINE: str = PREFIX + "reset_pipeline"
+    KEY_REPLYTYPE_PIPELINE_RESET: str = PREFIX + "pipeline_reset"
 
     ACTION_NPC_OFFENDED: str = PREFIX + "npc_offended"
     ACTION_NPC_FORGIVEN: str = PREFIX + "npc_forgiven"

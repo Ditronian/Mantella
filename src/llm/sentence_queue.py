@@ -34,7 +34,6 @@ class sentence_queue:
                     return retrieved_sentence
                 except queue.Empty:
                     logging.warning(f"sentence_queue.get_next_sentence() timed out after {self.QUEUE_GET_TIMEOUT}s waiting for a sentence. Generation may be hung.")
-                    self.__is_more_to_come = False
                     return None
             else:
                 self.log(f"Nothing to get from queue, returning None")

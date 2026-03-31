@@ -213,6 +213,13 @@ class GameStateManager:
         return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_PLAYERTALK}
 
     @utils.time_it
+    def reset_pipeline(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        if not self.__talk:
+            return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_PIPELINE_RESET}
+        self.__talk.reset_pipeline()
+        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_PIPELINE_RESET}
+
+    @utils.time_it
     def end_conversation(self, input_json: dict[str, Any]) -> dict[str, Any]:
         if(self.__talk):
             self.__talk.end()
