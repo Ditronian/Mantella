@@ -95,10 +95,12 @@ class communication_constants:
     # Director Directives
     KEY_REQUESTTYPE_REDO: str = PREFIX + "redo"
     KEY_REQUESTTYPE_DIRECT: str = PREFIX + "direct"
+    KEY_REQUESTTYPE_SETDIRECTION: str = PREFIX + "set_direction"
     KEY_REQUESTTYPE_NSFW_TOGGLE: str = PREFIX + "nsfw_toggle"
     KEY_REDO_GUIDANCE: str = PREFIX + "redo_guidance"
     KEY_DIRECT_INSTRUCTION: str = PREFIX + "direct_instruction"
     KEY_NSFW_ENABLE: str = PREFIX + "nsfw_enable"
+    KEY_REPLYTYPE_DIRECTIONACCEPTED: str = PREFIX + "direction_accepted"
 
     ACTION_NPC_OFFENDED: str = PREFIX + "npc_offended"
     ACTION_NPC_FORGIVEN: str = PREFIX + "npc_forgiven"

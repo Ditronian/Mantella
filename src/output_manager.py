@@ -66,7 +66,11 @@ class ChatManager:
 
         character_to_talk = content.speaker
         text = ' ' + content.text + ' '
-        
+
+        # Skip TTS if generation is being stopped
+        if self.__stop_generation.is_set():
+            return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
+
         # Check for short voicelines before sending to TTS
         if len(content.text.strip()) < 3:
             logging.warning(f"Skipping TTS for voiceline that is too-short: '{content.text.strip()}'")
@@ -211,6 +215,8 @@ class ChatManager:
 
                         # Process sentences from the parser chain
                         if parsed_sentence:
+                            if self.__stop_generation.is_set():
+                                break
                             if not self.__config.narration_handling == NarrationHandlingEnum.CUT_NARRATIONS or parsed_sentence.sentence_type != SentenceTypeEnum.NARRATION:
                                 new_sentence = self.generate_sentence(parsed_sentence)
                                 blocking_queue.put(new_sentence)
@@ -239,7 +245,7 @@ class ChatManager:
                     time.sleep(5)
 
             # Drain any remaining text left in current_sentence after streaming ends
-            while current_sentence.strip() and not settings.stop_generation:
+            while current_sentence.strip() and not settings.stop_generation and not self.__stop_generation.is_set():
                 parsed_sentence = None
                 for parser in parser_chain:
                     if not parsed_sentence:
@@ -249,6 +255,8 @@ class ChatManager:
                     if settings.stop_generation:
                         break
                 if parsed_sentence:
+                    if self.__stop_generation.is_set():
+                        break
                     if not self.__config.narration_handling == NarrationHandlingEnum.CUT_NARRATIONS or parsed_sentence.sentence_type != SentenceTypeEnum.NARRATION:
                         new_sentence = self.generate_sentence(parsed_sentence)
                         blocking_queue.put(new_sentence)
@@ -257,6 +265,8 @@ class ChatManager:
                     # No parser could extract a sentence — treat remainder as final sentence
                     remaining = current_sentence.strip()
                     if remaining:
+                        if self.__stop_generation.is_set():
+                            break
                         final_content = sentence_content(settings.current_speaker, remaining, SentenceTypeEnum.SPEECH, False)
                         for parser in parser_chain:
                             final_content, pending_sentence = parser.modify_sentence_content(final_content, pending_sentence, settings)

@@ -196,7 +196,10 @@ class ClientBase(AIClient):
                         if chunk and chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                             yield chunk.choices[0].delta.content
                     except Exception as e:
-                        logging.error(f"LLM API Connection Error: {e}")
+                        error_details = str(e)
+                        if e.__cause__:
+                            error_details += f" | Cause: {e.__cause__}"
+                        logging.error(f"LLM API Connection Error: {error_details}")
                         break
             except Exception as e:
                 utils.play_error_sound()
@@ -215,7 +218,17 @@ class ClientBase(AIClient):
                     else:
                         logging.error(f"LLM API Error: {e}")
                 else:
-                    logging.error(f"LLM API Error: {e}")
+                    # Log detailed error info for vague streaming errors
+                    error_details = str(e)
+                    if hasattr(e, 'body') and e.body:
+                        error_details += f" | Body: {e.body}"
+                    if hasattr(e, 'status_code'):
+                        error_details += f" | Status: {e.status_code}"
+                    if e.__cause__:
+                        error_details += f" | Cause: {e.__cause__}"
+                    logging.error(f"LLM API Error: {error_details}")
+                # Re-raise so the caller's retry logic can handle it
+                raise
             finally:
                 await async_client.close()
 

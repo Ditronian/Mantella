@@ -101,6 +101,8 @@ class mantella_route(routeable):
                         reply = await asyncio.to_thread(self.__game.redo_response, received_json)
                     case comm_consts.KEY_REQUESTTYPE_DIRECT:
                         reply = await asyncio.to_thread(self.__game.direct_npcs, received_json)
+                    case comm_consts.KEY_REQUESTTYPE_SETDIRECTION:
+                        reply = await asyncio.to_thread(self.__game.set_direction, received_json)
                     case comm_consts.KEY_REQUESTTYPE_NSFW_TOGGLE:
                         reply = await asyncio.to_thread(self.__game.nsfw_toggle, received_json)
                     case comm_consts.KEY_REQUESTTYPE_REDOSUMMARY:

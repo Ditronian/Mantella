@@ -192,6 +192,19 @@ class GameStateManager:
         return self.__wait_for_sentence()
 
     @utils.time_it
+    def set_direction(self, input_json: dict[str, Any]) -> dict[str, Any]:
+        """Set a pending direction for the current conversation (non-blocking).
+        The direction will be picked up by the next continue_conversation() iteration.
+        """
+        if not self.__talk:
+            return self.error_message("No running conversation.")
+        instruction = input_json.get(comm_consts.KEY_DIRECT_INSTRUCTION, '')
+        if not instruction:
+            return self.error_message("Direction instruction cannot be empty.")
+        self.__talk.set_pending_direction(instruction)
+        return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_DIRECTIONACCEPTED}
+
+    @utils.time_it
     def nsfw_toggle(self, input_json: dict[str, Any]) -> dict[str, Any]:
         if not self.__talk:
             return self.error_message("No running conversation.")

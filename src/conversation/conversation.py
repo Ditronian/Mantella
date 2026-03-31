@@ -62,6 +62,7 @@ class conversation:
         self.last_sentence_start_time = time.time()
         self.__end_conversation_keywords = utils.parse_keywords(context_for_conversation.config.end_conversation_keyword)
         self.__redo_cleanup_messages: list[message] = []
+        self.__pending_direction: str | None = None
 
     @property
     def has_already_ended(self) -> bool:
@@ -141,7 +142,20 @@ class conversation:
             # Check if conversation too long and if yes initiate intermittent reload
             self.__initiate_reload_conversation()
 
-        # Check for radiant direction before other processing
+        # Check for pending direction (sent immediately via set_direction HTTP request)
+        if self.__pending_direction:
+            direction = self.__pending_direction
+            self.__pending_direction = None
+            direction = self.__check_and_strip_nsfw_from_direction(direction)
+            logging.info(f"Pending direction detected: {direction}")
+            with self.__generation_start_lock:
+                self.__stop_generation()
+                self.__sentences.clear()
+                self.__add_radiant_direction(direction)
+            self.__start_generating_npc_sentences()
+            return comm_consts.KEY_REPLYTYPE_NPCTALK, None
+
+        # Check for radiant direction before other processing (legacy piggyback via context)
         radiant_direction = self.__should_direct_radiant_npc()
         if radiant_direction:
             radiant_direction = self.__check_and_strip_nsfw_from_direction(radiant_direction)
@@ -160,15 +174,15 @@ class conversation:
             self.__sentences.clear()
             self.__is_player_interrupting = True
             return comm_consts.KEY_REQUESTTYPE_TTS, None
-        
+
         # restart mic listening as soon as NPC's first sentence is processed
         if self.__mic_input and self.__allow_interruption and not self.__mic_ptt and not self.__stt.is_listening and self.__allow_mic_input and not isinstance(self.__conversation_type, radiant):
             mic_prompt = self.__get_mic_prompt()
             self.__stt.start_listening(mic_prompt)
-        
+
         #Grab the next sentence from the queue
         next_sentence: sentence | None = self.retrieve_sentence_from_queue()
-        
+
         if next_sentence and len(next_sentence.text) > 0:
             if comm_consts.ACTION_REMOVECHARACTER in next_sentence.actions:
                 self.__context.remove_character(next_sentence.speaker)
@@ -177,6 +191,8 @@ class conversation:
                 logging.debug(f'Waiting {round(self.last_sentence_audio_length, 1)} seconds for last voiceline to play')
             # before immediately sending the next voiceline, give the player the chance to interrupt
             while time.time() - self.last_sentence_start_time < self.last_sentence_audio_length:
+                if self.__pending_direction:
+                    break  # Exit wait early; direction will be caught on next call
                 if self.__stt and self.__stt.has_player_spoken:
                     self.__stop_generation()
                     self.__sentences.clear()
@@ -187,12 +203,24 @@ class conversation:
             self.last_sentence_start_time = time.time()
             return comm_consts.KEY_REPLYTYPE_NPCTALK, next_sentence
         else:
+            # Check for pending direction before auto-continuation (catches sentinel-unblocked case)
+            if self.__pending_direction:
+                direction = self.__pending_direction
+                self.__pending_direction = None
+                direction = self.__check_and_strip_nsfw_from_direction(direction)
+                logging.info(f"Pending direction detected (post-queue): {direction}")
+                with self.__generation_start_lock:
+                    self.__stop_generation()
+                    self.__sentences.clear()
+                    self.__add_radiant_direction(direction)
+                self.__start_generating_npc_sentences()
+                return comm_consts.KEY_REPLYTYPE_NPCTALK, None
             #Ask the conversation type here, if we should end the conversation
             if self.__conversation_type.should_end(self.__context, self.__messages):
                 self.initiate_end_sequence()
                 return comm_consts.KEY_REPLYTYPE_NPCTALK, None
             else:
-                #If not ended, ask the conversation type for an automatic user message. If there is None, signal the game that the player must provide it 
+                #If not ended, ask the conversation type for an automatic user message. If there is None, signal the game that the player must provide it
                 new_user_message = self.__conversation_type.get_user_message(self.__context, self.__messages)
                 if new_user_message:
                     self.__messages.add_message(new_user_message)
@@ -293,6 +321,22 @@ class conversation:
             self.__start_generating_npc_sentences()
             return True
         return False
+
+    def set_pending_direction(self, instruction: str):
+        """Set a pending direction to be processed by the next continue_conversation() call.
+        This is called from a separate HTTP request thread and must not manipulate the queue directly.
+        Instead, it sets a flag and injects a sentinel to wake up any blocking queue get.
+        """
+        self.__pending_direction = instruction
+        # Inject an empty sentinel to unblock any waiting get_next_sentence()
+        speaker = self.__context.npcs_in_conversation.last_added_character
+        if speaker:
+            empty_sentinel = sentence(
+                sentence_content(speaker, "", SentenceTypeEnum.SPEECH, True),
+                "", 0
+            )
+            self.__sentences.put(empty_sentinel)
+        logging.info(f"Pending direction set: {instruction}")
 
     def toggle_nsfw(self, enable: bool):
         """Toggle NSFW mode on or off (called from Director menu via game_manager)"""
@@ -460,9 +504,10 @@ class conversation:
         """Stops the current generation of sentences if there is one
         """
         self.__output_manager.stop_generation()
-        if self.__generation_thread and self.__generation_thread.is_alive():
-            self.__generation_thread.join(timeout=10.0)
-            if self.__generation_thread.is_alive():
+        thread = self.__generation_thread
+        if thread and thread.is_alive():
+            thread.join(timeout=10.0)
+            if thread.is_alive():
                 logging.warning("Generation thread did not stop within 10 seconds. Proceeding anyway.")
         self.__generation_thread = None
 
