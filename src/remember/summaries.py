@@ -121,7 +121,8 @@ class summaries(remembering):
                     language=self.__language_name,
                     game=self.__game
                 )
-        while True:
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
                 if len(messages) >= 5:
                     return self.summarize_conversation(messages.transform_to_dict_representation(messages.get_talk_only()), prompt, npc_name)
@@ -129,9 +130,11 @@ class summaries(remembering):
                     logging.info(f"Conversation summary not saved. Not enough dialogue spoken.")
                 break
             except:
-                logging.error('Failed to summarize conversation. Retrying...')
-                time.sleep(5)
-                continue
+                logging.error(f'Failed to summarize conversation (attempt {attempt + 1}/{max_retries}). Retrying...')
+                if attempt < max_retries - 1:
+                    time.sleep(5)
+                else:
+                    logging.error('Summarization failed after all retries. Skipping summary.')
         return ""
 
     @utils.time_it
@@ -161,7 +164,9 @@ class summaries(remembering):
         # if summaries token limit is reached, summarize the summaries
         if count_tokens_summaries > summary_limit:
             logging.info(f'Token limit of conversation summaries reached ({count_tokens_summaries} / {summary_limit} tokens). Creating new summary file...')
-            while True:
+            long_conversation_summary = ""
+            max_retries = 3
+            for attempt in range(max_retries):
                 try:
                     prompt = self.__resummarize_prompt.format(
                         name=npc.name,
@@ -171,9 +176,12 @@ class summaries(remembering):
                     long_conversation_summary = self.summarize_conversation(conversation_summaries, prompt, npc.name)
                     break
                 except:
-                    logging.error('Failed to summarize conversation. Retrying...')
-                    time.sleep(5)
-                    continue
+                    logging.error(f'Failed to resummarize conversation (attempt {attempt + 1}/{max_retries}). Retrying...')
+                    if attempt < max_retries - 1:
+                        time.sleep(5)
+                    else:
+                        logging.error('Resummarization failed after all retries. Skipping.')
+                        return
 
             # Split the file path and increment the number by 1
             base_directory, filename = os.path.split(conversation_summary_file)
