@@ -1,6 +1,7 @@
 from threading import Lock
 from typing import AsyncGenerator, Any
 from openai import APIConnectionError, BadRequestError, OpenAI, AsyncOpenAI, RateLimitError
+import httpx
 import logging
 import time
 import tiktoken
@@ -97,7 +98,7 @@ class ClientBase(AIClient):
         Returns:
             AsyncOpenAI: The new async client object
         """
-        return AsyncOpenAI(api_key=self._api_key, base_url=self._base_url, default_headers=self._header)
+        return AsyncOpenAI(api_key=self._api_key, base_url=self._base_url, default_headers=self._header, timeout=httpx.Timeout(90.0, connect=10.0))
 
 
     @utils.time_it
@@ -110,7 +111,7 @@ class ClientBase(AIClient):
         Returns:
             OpenAI: The new sync client object
         """
-        return OpenAI(api_key=self._api_key, base_url=self._base_url, default_headers=self._header)
+        return OpenAI(api_key=self._api_key, base_url=self._base_url, default_headers=self._header, timeout=httpx.Timeout(90.0, connect=10.0))
 
 
     @utils.time_it

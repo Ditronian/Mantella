@@ -89,7 +89,7 @@ class summaries(remembering):
             if not os.path.exists(folder_path):
                 return 1
                 
-            txt_files = [f for f in os.listdir(folder_path) if f.endswith('.txt')]
+            txt_files = [f for f in os.listdir(folder_path) if f.endswith('.txt') and '_summary_' in f]
             if not txt_files:
                 return 1
                 

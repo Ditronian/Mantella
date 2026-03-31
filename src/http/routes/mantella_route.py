@@ -56,6 +56,21 @@ class mantella_route(routeable):
 
     @utils.time_it
     def add_route_to_server(self, app: FastAPI):
+        @app.get("/force_rescue")
+        async def force_rescue():
+            """Emergency endpoint to forcibly end a stuck conversation.
+            Hit http://localhost:4999/force_rescue from a browser when stuck.
+            """
+            logging.warning("FORCE RESCUE triggered via /force_rescue endpoint")
+            if not self.__game:
+                return {"status": "no_game", "message": "No game manager active."}
+            try:
+                result = await asyncio.to_thread(self.__game.end_conversation, {})
+                return {"status": "rescued", "message": "Conversation forcibly ended.", "result": result}
+            except Exception as e:
+                logging.error(f"Force rescue error: {e}")
+                return {"status": "error", "message": str(e)}
+
         @app.post("/mantella")
         async def mantella(request: Request):
             if not self._can_route_be_used():

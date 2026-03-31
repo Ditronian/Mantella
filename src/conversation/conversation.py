@@ -13,7 +13,7 @@ from src.llm.sentence_queue import sentence_queue
 from src.llm.sentence import sentence
 from src.remember.remembering import remembering
 from src.output_manager import ChatManager
-from src.llm.messages import assistant_message, system_message, user_message
+from src.llm.messages import assistant_message, message, system_message, user_message
 from src.conversation.context import context
 from src.llm.message_thread import message_thread
 from src.conversation.conversation_type import conversation_type, imaginary, multi_npc, pc_to_npc, radiant
@@ -61,6 +61,7 @@ class conversation:
         self.last_sentence_audio_length = 0
         self.last_sentence_start_time = time.time()
         self.__end_conversation_keywords = utils.parse_keywords(context_for_conversation.config.end_conversation_keyword)
+        self.__redo_cleanup_messages: list[message] = []
 
     @property
     def has_already_ended(self) -> bool:
@@ -196,6 +197,10 @@ class conversation:
                 if new_user_message:
                     self.__messages.add_message(new_user_message)
                     self.__start_generating_npc_sentences()
+                    return comm_consts.KEY_REPLYTYPE_NPCTALK, None
+                elif isinstance(self.__conversation_type, radiant):
+                    # Safety net: radiant conversations should never wait for player input
+                    self.initiate_end_sequence()
                     return comm_consts.KEY_REPLYTYPE_NPCTALK, None
                 else:
                     return comm_consts.KEY_REPLYTYPE_PLAYERTALK, None
@@ -382,6 +387,15 @@ class conversation:
         if not next_sentence.is_system_generated_sentence and not next_sentence.speaker.is_player_character:
             last_message = self.__messages.get_last_message()
             if not isinstance(last_message, assistant_message):
+                # Clean up redo messages now that the LLM has started generating a replacement
+                if self.__redo_cleanup_messages:
+                    for msg in self.__redo_cleanup_messages:
+                        try:
+                            self.__messages._message_thread__messages.remove(msg)
+                        except ValueError:
+                            pass
+                    logging.info("Cleaned up old assistant message and OOC redo directive from history")
+                    self.__redo_cleanup_messages = []
                 last_message = assistant_message(self.__context.config)
                 last_message.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
                 self.__messages.add_message(last_message)
@@ -432,19 +446,24 @@ class conversation:
     
     @utils.time_it
     def __start_generating_npc_sentences(self):
-        """Starts a background Thread to generate sentences into the sentence_queue"""    
+        """Starts a background Thread to generate sentences into the sentence_queue"""
         with self.__generation_start_lock:
+            if self.__generation_thread and not self.__generation_thread.is_alive():
+                self.__generation_thread = None
             if not self.__generation_thread:
                 self.__sentences.is_more_to_come = True
-                self.__generation_thread = Thread(None, self.__output_manager.generate_response, None, [self.__messages, self.__context.npcs_in_conversation, self.__sentences, self.context.config.actions]).start()   
+                self.__generation_thread = Thread(None, self.__output_manager.generate_response, None, [self.__messages, self.__context.npcs_in_conversation, self.__sentences, self.context.config.actions])
+                self.__generation_thread.start()   
 
     @utils.time_it
     def __stop_generation(self):
         """Stops the current generation of sentences if there is one
         """
         self.__output_manager.stop_generation()
-        while self.__generation_thread and self.__generation_thread.is_alive():
-            time.sleep(0.1)
+        if self.__generation_thread and self.__generation_thread.is_alive():
+            self.__generation_thread.join(timeout=10.0)
+            if self.__generation_thread.is_alive():
+                logging.warning("Generation thread did not stop within 10 seconds. Proceeding anyway.")
         self.__generation_thread = None
 
     @utils.time_it
@@ -495,17 +514,21 @@ class conversation:
         """
         logging.info("NPC auto-continuation triggered - injecting continuation directive")
 
-        # Create a system-generated user message with the continuation prompt
-        continuation_message = user_message(
-            self.__context.config,
-            self.__context.config.npc_auto_continue_prompt,
-            "",  # No speaker name for system messages
-            True  # Mark as system-generated
-        )
-        continuation_message.is_multi_npc_message = False
+        with self.__generation_start_lock:
+            self.__stop_generation()
+            self.__sentences.clear()
 
-        # Add the continuation directive to the message thread
-        self.__messages.add_message(continuation_message)
+            # Create a system-generated user message with the continuation prompt
+            continuation_message = user_message(
+                self.__context.config,
+                self.__context.config.npc_auto_continue_prompt,
+                "",  # No speaker name for system messages
+                True  # Mark as system-generated
+            )
+            continuation_message.is_multi_npc_message = False
+
+            # Add the continuation directive to the message thread
+            self.__messages.add_message(continuation_message)
 
         # Start generating NPC response
         self.__start_generating_npc_sentences()
@@ -537,7 +560,8 @@ class conversation:
         return Transcriber.activation_name_exists(transcript_cleaned, self.__end_conversation_keywords)
 
     def __redo_last_response(self, guidance: str, player_name: str) -> bool:
-        """Removes the last NPC response batch and adds redo directive
+        """Keeps the last NPC response in context, adds an OOC redo directive,
+        and schedules both for cleanup after generation completes.
 
         Args:
             guidance (str): the guidance for regenerating the response
@@ -546,34 +570,39 @@ class conversation:
         Returns:
             bool: True if successful, False if no assistant message found
         """
-        # Find and remove the last assistant_message
-        removed = False
-        removed_content = ""
+        # Find the last assistant_message but DON'T remove it yet — the LLM needs
+        # to see what it said wrong so guidance like "Serana would never say that" makes sense
+        old_assistant = None
         for i in range(len(self.__messages._message_thread__messages) - 1, -1, -1):
             if isinstance(self.__messages._message_thread__messages[i], assistant_message):
-                removed_msg = self.__messages._message_thread__messages.pop(i)
-                removed_content = removed_msg.get_formatted_content()
-                logging.info(f"Removed last NPC response for redo (first 100 chars): {removed_content[:100]}...")
-                removed = True
+                old_assistant = self.__messages._message_thread__messages[i]
+                logging.info(f"Found last NPC response for redo (first 100 chars): {old_assistant.get_formatted_content()[:100]}...")
                 break
 
-        if not removed:
-            logging.warning("Redo requested but no assistant message found to remove")
+        if not old_assistant:
+            logging.warning("Redo requested but no assistant message found to redo")
             return False
 
-        # Add redo directive as user_message with clear marking
-        # Include the removed response for context so LLM knows what it said before
+        # Add OOC redo directive as a user_message — the system prompt tells the LLM
+        # to follow OOC instructions without acknowledging them
         if guidance:
-            # Redo with specific guidance
-            directive_text = self.__context.config.redo_with_guidance_prompt.format(removed_content=removed_content, guidance=guidance)
+            directive_text = self.__context.config.redo_with_guidance_prompt.format(guidance=guidance)
         else:
-            # Redo without guidance - just try again differently
-            directive_text = self.__context.config.redo_without_guidance_prompt.format(removed_content=removed_content)
+            directive_text = self.__context.config.redo_without_guidance_prompt
 
-        redo_directive = system_message(directive_text, self.__context.config)
+        redo_directive = user_message(
+            self.__context.config,
+            directive_text,
+            player_name,
+            is_system_generated_message=True
+        )
+        redo_directive.is_multi_npc_message = self.__context.npcs_in_conversation.contains_multiple_npcs()
         self.__messages.add_message(redo_directive)
 
-        logging.info(f"Added redo directive{' with guidance: ' + guidance if guidance else ' (no specific guidance)'}")
+        # Schedule both messages for cleanup once the LLM starts generating
+        self.__redo_cleanup_messages = [old_assistant, redo_directive]
+
+        logging.info(f"Added OOC redo directive{' with guidance: ' + guidance if guidance else ' (no specific guidance)'}")
         return True
 
     def __toggle_nsfw_mode(self, enable: bool):

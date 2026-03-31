@@ -314,6 +314,7 @@ class GameStateManager:
             gender: int = int(json[comm_consts.KEY_ACTOR_GENDER])
             race: str = str(json[comm_consts.KEY_ACTOR_RACE])
             actor_voice_model: str = str(json[comm_consts.KEY_ACTOR_VOICETYPE])
+            logging.info(f"Actor voice type for {character_name}: {actor_voice_model}")
             if '<' in actor_voice_model:
                 ingame_voice_model: str = actor_voice_model.split('<')[1].split(' ')[0]
             else:
@@ -458,6 +459,11 @@ class GameStateManager:
                 logging.info(f"Redoing summary for {character_name} (ref_id={ref_id}, world_id={world_id})")
                 self.__rememberer.redo_summary_for_character(character, world_id, user_notes)
 
+            # Reload the active conversation so it picks up the new summary in its system prompt
+            if self.__talk:
+                self.__talk.reload_conversation()
+                logging.info("Active conversation reloaded to reflect new summary")
+
             return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_REDOSUMMARY_COMPLETED}
         except Exception as e:
             logging.error(f"Error in redo_summary: {e}")
@@ -484,35 +490,35 @@ class GameStateManager:
                 return self.error_message("Development text cannot be empty.")
 
             actors = input_json.get(comm_consts.KEY_ACTORS, [])
-            if len(actors) != 1:
-                return self.error_message("Exactly one actor required for add_development.")
+            if len(actors) < 1:
+                return self.error_message("At least one actor required for add_development.")
 
-            actor_json = actors[0]
-            base_id = utils.convert_to_skyrim_hex_format(str(actor_json[comm_consts.KEY_ACTOR_BASEID]))
-            ref_id = utils.convert_to_skyrim_hex_format(str(actor_json[comm_consts.KEY_ACTOR_REFID]))
+            for actor_json in actors:
+                base_id = utils.convert_to_skyrim_hex_format(str(actor_json[comm_consts.KEY_ACTOR_BASEID]))
+                ref_id = utils.convert_to_skyrim_hex_format(str(actor_json[comm_consts.KEY_ACTOR_REFID]))
 
-            if ref_id.startswith('FE'):
-                ref_id = ref_id[-3:].rjust(6, "0")
-            else:
-                ref_id = ref_id[-6:]
-            if base_id.startswith('FE'):
-                base_id = base_id[-3:].rjust(6, "0")
-            else:
-                base_id = base_id[-6:]
+                if ref_id.startswith('FE'):
+                    ref_id = ref_id[-3:].rjust(6, "0")
+                else:
+                    ref_id = ref_id[-6:]
+                if base_id.startswith('FE'):
+                    base_id = base_id[-3:].rjust(6, "0")
+                else:
+                    base_id = base_id[-6:]
 
-            character_name = str(actor_json[comm_consts.KEY_ACTOR_NAME])
-            character = Character(base_id, ref_id, character_name,
-                                  gender=0, race="", is_player_character=False,
-                                  bio="", is_in_combat=False, is_enemy=False,
-                                  relationship_rank=0, is_generic_npc=False,
-                                  ingame_voice_model="", tts_voice_model="",
-                                  csv_in_game_voice_model="", advanced_voice_model="",
-                                  voice_accent="", tts_provider="",
-                                  equipment=Equipment({}),
-                                  custom_character_values={})
+                character_name = str(actor_json[comm_consts.KEY_ACTOR_NAME])
+                character = Character(base_id, ref_id, character_name,
+                                      gender=0, race="", is_player_character=False,
+                                      bio="", is_in_combat=False, is_enemy=False,
+                                      relationship_rank=0, is_generic_npc=False,
+                                      ingame_voice_model="", tts_voice_model="",
+                                      csv_in_game_voice_model="", advanced_voice_model="",
+                                      voice_accent="", tts_provider="",
+                                      equipment=Equipment({}),
+                                      custom_character_values={})
 
-            self.__character_developments.save(character, world_id, development_text.strip())
-            logging.info(f"Development added for {character_name}: {development_text.strip()}")
+                self.__character_developments.save(character, world_id, development_text.strip())
+                logging.info(f"Development added for {character_name}: {development_text.strip()}")
             return {comm_consts.KEY_REPLYTYPE: comm_consts.KEY_REPLYTYPE_DEVELOPMENT_ADDED}
         except Exception as e:
             logging.error(f"Error in add_development: {e}")

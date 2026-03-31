@@ -5,6 +5,7 @@ from src.llm.sentence import sentence
 from src import utils
 
 class sentence_queue:
+    QUEUE_GET_TIMEOUT: float = 30.0  # seconds; long enough for slow LLMs, short enough to recover from hangs
     __logging_level = 42
     __should_log = False
 
@@ -27,9 +28,14 @@ class sentence_queue:
         self.log(f"Trying to aquire get_lock to get next sentence")
         with self.__get_lock:
             if self.__queue.qsize() > 0 or self.__is_more_to_come:
-                retrieved_sentence = self.__queue.get()
-                self.log(f"Retrieved '{retrieved_sentence.text}'")
-                return retrieved_sentence
+                try:
+                    retrieved_sentence = self.__queue.get(timeout=self.QUEUE_GET_TIMEOUT)
+                    self.log(f"Retrieved '{retrieved_sentence.text}'")
+                    return retrieved_sentence
+                except queue.Empty:
+                    logging.warning(f"sentence_queue.get_next_sentence() timed out after {self.QUEUE_GET_TIMEOUT}s waiting for a sentence. Generation may be hung.")
+                    self.__is_more_to_come = False
+                    return None
             else:
                 self.log(f"Nothing to get from queue, returning None")
                 return None

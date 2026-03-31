@@ -60,8 +60,8 @@ class PromptDefinitions:
                                 "actions",
                                 "world_events"]
 
-    ALLOWED_REDO_VARIABLES_WITH_GUIDANCE = ["removed_content", "guidance"]
-    ALLOWED_REDO_VARIABLES_WITHOUT_GUIDANCE = ["removed_content"]
+    ALLOWED_REDO_VARIABLES_WITH_GUIDANCE = ["guidance"]
+    ALLOWED_REDO_VARIABLES_WITHOUT_GUIDANCE = []
     ALLOWED_DIRECT_VARIABLES = ["instruction"]
     ALLOWED_RADIANT_DIRECTION_VARIABLES = ["direction"]
     ALLOWED_ACTION_PROMPT_VARIABLES = ["key"]
@@ -145,6 +145,7 @@ class PromptDefinitions:
                                 The time is {time} {time_group}.
                                 {weather}
                                 Remember to stay in character.
+                                Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                                 {actions}
                                 The conversation takes place in {language}.
                                 {conversation_summary}"""
@@ -163,6 +164,7 @@ class PromptDefinitions:
                                     {weather}
                                     You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
                                     Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                                    Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                                     {actions}
                                     Remember, you can only respond as {names}. Ensure to use their full name when responding.
                                     The conversation takes place in {language}."""
@@ -177,8 +179,9 @@ class PromptDefinitions:
                                     {conversation_summaries}
                                     The time is {time} {time_group}.
                                     {weather}
-                                    You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'. 
-                                    Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable). 
+                                    You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
+                                    Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                                    Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                                     {actions}
                                     Remember, you can only respond as {names}. Ensure to use their full name when responding.
                                     The conversation takes place in {language}."""
@@ -195,6 +198,7 @@ class PromptDefinitions:
                                 This conversation is a script that will be spoken aloud, so please keep your responses appropriately concise and avoid text-only formatting such as numbered lists.
                                 The time is {time} {time_group}.
                                 Remember to stay in character.
+                                Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                                 {actions}
                                 The conversation takes place in {language}.
                                 {conversation_summary}"""
@@ -209,6 +213,7 @@ class PromptDefinitions:
                             Who do you think these belong to?
                             You are having a conversation with {trust} (the player) in {location}.
                             This conversation is a script that will be spoken aloud, so please keep your responses appropriately concise and avoid text-only formatting such as numbered lists.
+                            Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                             {actions}
                             The time is {time} {time_group}.
                             The conversation takes place in {language}.
@@ -220,10 +225,11 @@ class PromptDefinitions:
         fallout4_multi_npc_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names_w_player}. {world_events}
                             Here are their backgrounds:
                             {bios}
-                            And here are their conversation histories: {conversation_summaries} 
+                            And here are their conversation histories: {conversation_summaries}
                             The time is {time} {time_group}.
-                            You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'. 
-                            Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable). 
+                            You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
+                            Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                            Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                             {actions}
                             Remember, you can only respond as {names}. Ensure to use their full name when responding.
                             The conversation takes place in {language}."""
@@ -233,10 +239,11 @@ class PromptDefinitions:
     def get_fallout4_radiant_prompt_config_value() -> ConfigValue:
         fallout4_radiant_prompt = """The following is a conversation in {location} in the post-apocalyptic Commonwealth of Fallout between {names}. {world_events}
                             Here are their backgrounds: {bios}
-                            And here are their conversation histories: {conversation_summaries} 
+                            And here are their conversation histories: {conversation_summaries}
                             The time is {time} {time_group}.
-                            You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'. 
-                            Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable). 
+                            You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
+                            Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                            Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                             {actions}
                             Remember, you can only respond as {names}. Ensure to use their full name when responding.
                             The conversation takes place in {language}."""
@@ -253,6 +260,7 @@ class PromptDefinitions:
                                 The time is {time} {time_group}.
                                 {weather}
                                 Remember to stay in character.
+                                Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                                 {actions}
                                 The conversation takes place in {language}.
                                 {conversation_summary}"""
@@ -274,6 +282,7 @@ class PromptDefinitions:
                                     {weather}
                                     You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
                                     Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                                    Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                                     {actions}
                                     Remember, you can only respond as {names}. Ensure to use their full name when responding.
                                     The conversation takes place in {language}."""
@@ -292,6 +301,7 @@ class PromptDefinitions:
                                     {weather}
                                     You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
                                     Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                                    Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                                     {actions}
                                     Remember, you can only respond as {names}. Ensure to use their full name when responding.
                                     The conversation takes place in {language}."""
@@ -307,6 +317,7 @@ class PromptDefinitions:
                             (The player picked up a pair of gloves)
                             Who do you think these belong to?
                             You are having a conversation with {trust} (the player) in {location}.
+                            Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                             {actions}
                             The time is {time} {time_group}.
                             The conversation takes place in {language}.
@@ -324,6 +335,7 @@ class PromptDefinitions:
                             The time is {time} {time_group}.
                             You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
                             Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                            Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                             {actions}
                             Remember, you can only respond as {names}. Ensure to use their full name when responding.
                             The conversation takes place in {language}."""
@@ -339,6 +351,7 @@ class PromptDefinitions:
                             The time is {time} {time_group}.
                             You are tasked with providing the responses for the NPCs. Please begin your response with an indication of who you are speaking as, for example: '{name}: Good evening.'.
                             Please use your own discretion to decide who should speak in a given situation (sometimes responding with all NPCs is suitable).
+                            Messages prefixed with "OOC:" are out-of-character instructions from the user. Follow them without acknowledging or responding to them directly — simply apply the instruction.
                             {actions}
                             Remember, you can only respond as {names}. Ensure to use their full name when responding.
                             The conversation takes place in {language}."""
@@ -402,17 +415,18 @@ class PromptDefinitions:
 
     @staticmethod
     def get_redo_with_guidance_prompt_config_value() -> ConfigValue:
-        default = "<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response with this guidance: {guidance}>>>"
+        default = "(OOC: The previous response was not satisfactory. Please redo it following this guidance: {guidance})"
         description = """The directive injected when the player asks an NPC to redo their response WITH specific guidance.
-                        Variables: {removed_content} = the NPC's previous response, {guidance} = the player's guidance text."""
+                        Variables: {guidance} = the player's guidance text.
+                        The old assistant response is kept in the message history so the LLM can see what it said wrong."""
         return ConfigValueString("redo_with_guidance_prompt", "Redo Directive (With Guidance)", description, default,
                                  [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_REDO_VARIABLES_WITH_GUIDANCE)])
 
     @staticmethod
     def get_redo_without_guidance_prompt_config_value() -> ConfigValue:
-        default = "<<<REDO DIRECTIVE: You previously responded with: '{removed_content}' This response was unsatisfactory. Please regenerate your response differently.>>>"
+        default = "(OOC: The previous response was not satisfactory. Please redo it differently.)"
         description = """The directive injected when the player asks an NPC to redo their response WITHOUT specific guidance.
-                        Variables: {removed_content} = the NPC's previous response."""
+                        The old assistant response is kept in the message history so the LLM can see what it said wrong."""
         return ConfigValueString("redo_without_guidance_prompt", "Redo Directive (Without Guidance)", description, default,
                                  [PromptDefinitions.PromptChecker(PromptDefinitions.ALLOWED_REDO_VARIABLES_WITHOUT_GUIDANCE)])
 

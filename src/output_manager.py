@@ -131,7 +131,12 @@ class ChatManager:
         """Stops the current generation and only returns once this stop has been successful
         """
         self.__stop_generation.set()
+        wait_start = time.time()
         while self.__is_generating:
+            if time.time() - wait_start > 15.0:
+                logging.warning("stop_generation: Timed out waiting for generation to stop after 15 seconds. Forcing state reset.")
+                self.__is_generating = False
+                break
             time.sleep(0.01)
         self.__stop_generation.clear()
         return
