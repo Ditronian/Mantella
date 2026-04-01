@@ -329,18 +329,11 @@ class conversation:
     def set_pending_direction(self, instruction: str):
         """Set a pending direction to be processed by the next continue_conversation() call.
         This is called from a separate HTTP request thread and must not manipulate the queue directly.
-        Instead, it sets a flag and injects a sentinel to wake up any blocking queue get.
+        Instead, it sets a flag and wakes any blocked consumer via cancel_get().
         """
         with self.__generation_start_lock:
             self.__pending_direction = instruction
-        # Inject an empty sentinel to unblock any waiting get_next_sentence()
-        speaker = self.__context.npcs_in_conversation.last_added_character
-        if speaker:
-            empty_sentinel = sentence(
-                sentence_content(speaker, "", SentenceTypeEnum.SPEECH, True),
-                "", 0
-            )
-            self.__sentences.put(empty_sentinel)
+        self.__sentences.cancel_get()
         logging.info(f"Pending direction set: {instruction}")
 
     def toggle_nsfw(self, enable: bool):
@@ -363,12 +356,6 @@ class conversation:
             self.__sentences.clear()
             self.__sentences.is_more_to_come = False
             self.__pending_direction = None
-        # Inject a sentinel so any blocked get_next_sentence() wakes up
-        speaker = self.__context.npcs_in_conversation.last_added_character
-        if speaker:
-            self.__sentences.put(sentence(
-                sentence_content(speaker, "", SentenceTypeEnum.SPEECH, True), "", 0
-            ))
         logging.warning("Pipeline reset complete — conversation ready for next input")
 
     def __get_mic_prompt(self):
@@ -410,9 +397,10 @@ class conversation:
         """
         # If the conversation can proceed for the first time, it starts and we add the system_message with the prompt
         if not self.__has_already_ended:
-            self.__stop_generation()
-            self.__sentences.clear()
-            
+            with self.__generation_start_lock:
+                self.__stop_generation()
+                self.__sentences.clear()
+
             if not self.__context.npcs_in_conversation.contains_player_character():
                 self.__conversation_type = radiant(self.__context.config)
             elif self.__context.npcs_in_conversation.active_character_count() >= 3:
@@ -480,9 +468,10 @@ class conversation:
         """Replaces all remaining sentences with a "goodbye" sentence that also prompts the game to request a stop to the conversation using an action
         """
         if not self.__has_already_ended:
-            config = self.__context.config            
-            self.__stop_generation()
-            self.__sentences.clear()
+            config = self.__context.config
+            with self.__generation_start_lock:
+                self.__stop_generation()
+                self.__sentences.clear()
             if self.__stt:
                 self.__stt.stop_listening()
                 self.__allow_mic_input = False
@@ -513,8 +502,9 @@ class conversation:
         """Ends a conversation
         """
         self.__has_already_ended = True
-        self.__stop_generation()
-        self.__sentences.clear()
+        with self.__generation_start_lock:
+            self.__stop_generation()
+            self.__sentences.clear()
         self.__save_conversation(is_reload=False)
     
     @utils.time_it
@@ -542,9 +532,10 @@ class conversation:
 
     @utils.time_it
     def __prepare_eject_npc_from_conversation(self, npc: Character):
-        if not self.__has_already_ended:            
-            self.__stop_generation()
-            self.__sentences.clear()            
+        if not self.__has_already_ended:
+            with self.__generation_start_lock:
+                self.__stop_generation()
+                self.__sentences.clear()
             # say goodbye
             goodbye_sentence = self.__output_manager.generate_sentence(sentence_content(npc, self.__context.config.goodbye_npc_response, SentenceTypeEnum.SPEECH, False))
             if goodbye_sentence:

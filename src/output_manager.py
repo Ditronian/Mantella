@@ -37,6 +37,8 @@ class ChatManager:
         self.__client: AIClient = client
         self.__is_generating: bool = False
         self.__stop_generation = Event()
+        self.__generation_done = Event()
+        self.__generation_done.set()  # Initially "done"
         self.__tts_access_lock = Lock()
         self.__is_first_sentence: bool = False
         self.__end_of_sentence_chars = ['.', '?', '!', ';', '。', '？', '！', '；', '：']
@@ -77,7 +79,11 @@ class ChatManager:
             # Return a sentence object without audio - skipping TTS entirely
             return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
 
-        with self.__tts_access_lock:
+        # Try to acquire TTS lock with timeout — if a zombie thread holds it, don't wait forever
+        if not self.__tts_access_lock.acquire(timeout=35.0):
+            logging.error("TTS lock held by previous generation thread — skipping TTS, returning text-only.")
+            return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
+        try:
             # Retry TTS synthesis up to 3 times with exponential backoff
             max_retries = 3
             retry_delay = 1.0  # Start with 1 second delay
@@ -85,6 +91,8 @@ class ChatManager:
 
             for attempt in range(max_retries):
                 try:
+                    if self.__stop_generation.is_set():
+                        return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
                     if self.__config.narration_handling == NarrationHandlingEnum.USE_NARRATOR and content.sentence_type == SentenceTypeEnum.NARRATION:
                         synth_options = SynthesizationOptions(False, self.__is_first_sentence)
                         tts = self.__tts_registry.get_provider()
@@ -101,10 +109,13 @@ class ChatManager:
                     logging.log(29, error_text)
 
                     if attempt < max_retries - 1:
-                        # Not the last attempt, wait and retry
+                        # Not the last attempt, wait and retry (interruptible by stop signal)
+                        if self.__stop_generation.is_set():
+                            return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
                         logging.log(29, f"Retrying TTS synthesis in {retry_delay} seconds...")
-                        import time
-                        time.sleep(retry_delay)
+                        self.__stop_generation.wait(timeout=retry_delay)
+                        if self.__stop_generation.is_set():
+                            return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, True), "", 0)
                         retry_delay *= 2  # Exponential backoff
                     else:
                         # All retries exhausted, return text-only sentence (no error_message to avoid conversation termination)
@@ -113,6 +124,8 @@ class ChatManager:
 
             self.__is_first_sentence = False
             return mantella_sentence(sentence_content(character_to_talk, text, content.sentence_type, content.is_system_generated_sentence, content.actions), audio_file, self.get_audio_duration(audio_file))
+        finally:
+            self.__tts_access_lock.release()
 
     @utils.time_it
     def generate_response(self, messages: message_thread, characters: Characters, blocking_queue: sentence_queue, actions: list[action]):
@@ -126,24 +139,25 @@ class ChatManager:
         """
         if(not characters.last_added_character):
             return
+        self.__stop_generation.clear()  # Reset stop flag for this new generation
+        self.__generation_done.clear()
         self.__is_generating = True
-        
-        asyncio.run(self.process_response(characters.last_added_character, blocking_queue, messages, characters, actions))
+        try:
+            asyncio.run(self.process_response(characters.last_added_character, blocking_queue, messages, characters, actions))
+        finally:
+            self.__is_generating = False
+            self.__generation_done.set()
     
     @utils.time_it
     def stop_generation(self):
-        """Stops the current generation and only returns once this stop has been successful
+        """Stops the current generation and only returns once this stop has been successful.
+        Note: does NOT clear __stop_generation flag — that's done by generate_response() on next start.
+        This ensures zombie threads eventually see the flag even after this method returns.
         """
         self.__stop_generation.set()
-        wait_start = time.time()
-        while self.__is_generating:
-            if time.time() - wait_start > 15.0:
-                logging.warning("stop_generation: Timed out waiting for generation to stop after 15 seconds. Forcing state reset.")
-                self.__is_generating = False
-                break
-            time.sleep(0.01)
-        self.__stop_generation.clear()
-        return
+        if not self.__generation_done.wait(timeout=15.0):
+            logging.warning("stop_generation: Timed out waiting for generation to stop after 15 seconds. Forcing state reset.")
+            self.__is_generating = False
 
     @utils.time_it
     def get_audio_duration(self, audio_file: str):

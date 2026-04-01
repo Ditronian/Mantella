@@ -102,7 +102,7 @@ class xtts(ttsable):
     def _get_available_models(self):
         # Code to request and return the list of available models
         try:
-            response = requests.get(self.__xtts_get_models_list)
+            response = requests.get(self.__xtts_get_models_list, timeout=30)
             if response.status_code == 200:
                 # Convert each element in the response to lowercase and remove spaces
                 return [model.lower().replace(' ', '') for model in response.json()]
@@ -117,7 +117,7 @@ class xtts(ttsable):
     def _get_available_speakers(self) -> dict[str, Any]:
         # Code to request and return the list of available models
         try:
-            response = requests.get(self.__xtts_get_speakers_list)
+            response = requests.get(self.__xtts_get_speakers_list, timeout=30)
             if response.status_code == 200:
                 all_speakers = response.json()
                 current_language_speakers = all_speakers.get(self._language, {}).get('speakers', [])
@@ -187,7 +187,7 @@ class xtts(ttsable):
                 'language': self._language,
                 'accent': self.__voice_accent,
             }
-            return requests.post(self.__xtts_synthesize_url, json=data)
+            return requests.post(self.__xtts_synthesize_url, json=data, timeout=30)
 
         if self.__tts_max_chunk_length > 0 and len(line) > self.__tts_max_chunk_length:
             phrases = self._split_voiceline(line, max_length=self.__tts_max_chunk_length)
